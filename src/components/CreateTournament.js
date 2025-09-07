@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { createTournament } from "../redux/actions"
 import { Navigate, useNavigate } from "react-router-dom"
+import { tournamentApi } from "../utils/tournamentApi"
 
 const CreateTournament = () => {
   const dispatch = useDispatch()
@@ -12,20 +13,37 @@ const CreateTournament = () => {
   const [tournamentName, setTournamentName] = useState("")
   const [competitionType, setCompetitionType] = useState("Pool (Billiards)")
   const [competitionFormat, setCompetitionFormat] = useState("Knockout")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const competitionTypes = ["Pool (Billiards)", "Darts", "Cars", "Bikes"]
   const competitionFormats = ["Knockout", "Round Robin"]
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (tournamentName.trim()) {
-      dispatch(
-        createTournament({
+      try {
+        setLoading(true)
+        setError(null)
+        
+        const tournamentData = {
           name: tournamentName.trim(),
           type: competitionType,
           format: competitionFormat,
-        }),
-      )
-      navigate("/player-entry")
+        }
+
+        const newTournament = await tournamentApi.createTournament(tournamentData)
+        dispatch(createTournament({
+          ...tournamentData,
+          id: newTournament.id,
+        }))
+        
+        navigate(`/player-entry/${newTournament.id}`)
+      } catch (err) {
+        setError('Failed to create tournament')
+        console.error('Error creating tournament:', err)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -73,11 +91,12 @@ const CreateTournament = () => {
     outline: "none",
     transition: "border-color 0.3s ease",
     boxSizing: "border-box",
+    opacity: loading ? 0.6 : 1,
   }
 
   const selectStyle = {
     ...inputStyle,
-    cursor: "pointer",
+    cursor: loading ? "not-allowed" : "pointer",
     background: "white",
   }
 
@@ -103,13 +122,13 @@ const CreateTournament = () => {
     fontWeight: "700",
     border: "none",
     borderRadius: "10px",
-    cursor: tournamentName.trim() ? "pointer" : "not-allowed",
+    cursor: (tournamentName.trim() && !loading) ? "pointer" : "not-allowed",
     transition: "all 0.3s ease",
     marginTop: "32px",
     marginBottom: "24px",
-    background: tournamentName.trim() ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#d1d5db",
+    background: (tournamentName.trim() && !loading) ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" : "#d1d5db",
     color: "white",
-    boxShadow: tournamentName.trim() ? "0 4px 15px rgba(102, 126, 234, 0.4)" : "none",
+    boxShadow: (tournamentName.trim() && !loading) ? "0 4px 15px rgba(102, 126, 234, 0.4)" : "none",
   }
 
   const footerStyle = {
@@ -132,7 +151,7 @@ const CreateTournament = () => {
       <div style={contentStyle}>
         <button
           style={returnBtnStyle}
-          onClick={() => navigate("/login")}
+          onClick={() => navigate("/tournaments")}
           onMouseEnter={(e) => {
             e.target.style.background = "#6b7280"
             e.target.style.color = "white"
@@ -157,6 +176,20 @@ const CreateTournament = () => {
           🏆 Create Tournament
         </h2>
 
+        {error && (
+          <div style={{
+            background: "#fee2e2",
+            border: "1px solid #fecaca",
+            color: "#dc2626",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "20px",
+            textAlign: "center",
+          }}>
+            {error}
+          </div>
+        )}
+
         <div style={sectionStyle}>
           <label style={labelStyle}>Tournament Name</label>
           <input
@@ -164,6 +197,7 @@ const CreateTournament = () => {
             placeholder="Enter Tournament Name"
             value={tournamentName}
             onChange={(e) => setTournamentName(e.target.value)}
+            disabled={loading}
             style={{
               ...inputStyle,
               borderColor: tournamentName.trim() ? "#10b981" : "#e5e7eb",
@@ -178,6 +212,7 @@ const CreateTournament = () => {
           <select
             value={competitionType}
             onChange={(e) => setCompetitionType(e.target.value)}
+            disabled={loading}
             style={selectStyle}
             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
             onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
@@ -195,6 +230,7 @@ const CreateTournament = () => {
           <select
             value={competitionFormat}
             onChange={(e) => setCompetitionFormat(e.target.value)}
+            disabled={loading}
             style={selectStyle}
             onFocus={(e) => (e.target.style.borderColor = "#6366f1")}
             onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
@@ -210,27 +246,31 @@ const CreateTournament = () => {
         <button
           style={createBtnStyle}
           onClick={handleCreate}
-          disabled={!tournamentName.trim()}
+          disabled={!tournamentName.trim() || loading}
           onMouseEnter={(e) => {
-            if (tournamentName.trim()) {
+            if (tournamentName.trim() && !loading) {
               e.target.style.transform = "translateY(-2px)"
               e.target.style.boxShadow = "0 6px 20px rgba(102, 126, 234, 0.6)"
             }
           }}
           onMouseLeave={(e) => {
-            if (tournamentName.trim()) {
+            if (tournamentName.trim() && !loading) {
               e.target.style.transform = "translateY(0)"
               e.target.style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.4)"
             }
           }}
         >
-          🚀 Create Tournament
+          {loading ? "🔄 Creating..." : "🚀 Create Tournament"}
         </button>
 
         <div style={footerStyle}>
           <a
             href="#"
             style={linkStyle}
+            onClick={(e) => {
+              e.preventDefault()
+              navigate("/tournaments")
+            }}
             onMouseEnter={(e) => (e.target.style.color = "#4f46e5")}
             onMouseLeave={(e) => (e.target.style.color = "#6366f1")}
           >

@@ -7,6 +7,7 @@ const TournamentDetails = () => {
   const navigate = useNavigate()
   const { id } = useParams()
   const isLoggedIn = useSelector((state) => state.auth.isLoggedIn)
+  const isAdmin = useSelector((state) => state.auth.isAdmin)
   const tournaments = useSelector((state) => state.tournaments)
   const currentTournament = useSelector((state) => state.tournament)
 
@@ -220,7 +221,7 @@ const TournamentDetails = () => {
                 e.target.style.transform = "translateY(0)"
               }}
             >
-              🏆 View Bracket
+              🏆 {isAdmin ? "Update Bracket" : "View Bracket"}
             </button>
 
             <button

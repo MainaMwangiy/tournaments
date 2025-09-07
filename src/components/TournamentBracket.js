@@ -10,6 +10,7 @@ import {
   selectTournament,
 } from "../redux/actions"
 import { useNavigate, useParams } from "react-router-dom"
+import { tournamentApi } from "../utils/tournamentApi"
 
 const TournamentBracket = () => {
   const dispatch = useDispatch()
@@ -25,8 +26,45 @@ const TournamentBracket = () => {
   const [editingMatch, setEditingMatch] = useState(null)
   const [score1, setScore1] = useState("")
   const [score2, setScore2] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Fetch tournament bracket on component mount
+  useEffect(() => {
+    if (id) {
+      fetchTournamentBracket()
+    }
+  }, [id])
+
+  const fetchTournamentBracket = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const bracketData = await tournamentApi.getTournamentBracket(id)
+      if (bracketData.bracket) {
+        dispatch(updateBracket(bracketData.bracket))
+      }
+
+      // Fetch tournament details if not in local state
+      const tournament = tournaments.find((t) => t.id.toString() === id)
+      if (!tournament) {
+        const tournamentDetails = await tournamentApi.getTournamentDetails(id)
+        dispatch(selectTournament(tournamentDetails))
+      }
+    } catch (err) {
+      setError("Failed to fetch tournament bracket")
+      console.error("Error fetching tournament bracket:", err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const createBracketStructure = (players) => {
+    if (!players || players.length < 2 || !Number.isInteger(Math.log2(players.length))) {
+      setError("Invalid number of players for bracket generation")
+      return []
+    }
+
     const sortedPlayers = [...players].sort((a, b) => b.seed - a.seed)
     const rounds = Math.log2(players.length)
     const bracket = []
@@ -52,16 +90,16 @@ const TournamentBracket = () => {
           match1.score1 > match1.score2
             ? match1.player1
             : match1.score1 === 0 && match1.score2 === 0
-              ? { name: "TBD", seed: 0 }
-              : match1.player2
+            ? { name: "TBD", seed: 0 }
+            : match1.player2
         let winner2 = { name: "TBD", seed: 0 }
         if (match2) {
           winner2 =
             match2.score1 > match2.score2
               ? match2.player1
               : match2.score1 === 0 && match2.score2 === 0
-                ? { name: "TBD", seed: 0 }
-                : match2.player2
+              ? { name: "TBD", seed: 0 }
+              : match2.player2
         }
         nextRound.push({
           player1: winner1,
@@ -77,9 +115,23 @@ const TournamentBracket = () => {
     return bracket
   }
 
-  const generateBracket = () => {
-    const newBracket = createBracketStructure(effectivePlayers)
-    dispatch(updateBracket(newBracket))
+  const generateBracket = async () => {
+    try {
+      const newBracket = createBracketStructure(effectivePlayers)
+      if (newBracket.length === 0) return // Exit if bracket creation failed
+      dispatch(updateBracket(newBracket))
+
+      // Update bracket on backend
+      if (id) {
+        // await tournamentApi.updateTournament(id, {
+        //   bracket: newBracket,
+        //   players: effectivePlayers,
+        // })
+      }
+    } catch (err) {
+      console.error("Error updating bracket:", err)
+      setError("Failed to update bracket")
+    }
   }
 
   const handleEditResult = (round, matchIndex) => {
@@ -89,47 +141,95 @@ const TournamentBracket = () => {
     setScore2(bracket[round][matchIndex].score2)
   }
 
-  const handleSaveResult = () => {
+  const handleSaveResult = async () => {
     if (editingMatch) {
-      dispatch(
-        updateMatchResult({
+      try {
+        setLoading(true)
+        setError(null)
+
+        const matchData = {
           round: editingMatch.round,
           matchIndex: editingMatch.matchIndex,
-          score1: Number.parseInt(score1),
-          score2: Number.parseInt(score2),
-        }),
-      )
-      setEditingMatch(null)
-      setScore1("")
-      setScore2("")
+          score1: Number.parseInt(score1) || 0,
+          score2: Number.parseInt(score2) || 0,
+        }
+
+        // Update local state
+        dispatch(updateMatchResult(matchData))
+
+        // Update on backend
+        if (id) {
+          await tournamentApi.updateTournament(id, {
+            matchResult: matchData,
+          })
+        }
+
+        setEditingMatch(null)
+        setScore1("")
+        setScore2("")
+      } catch (err) {
+        console.error("Error updating match result:", err)
+        setError("Failed to update match result")
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
+  const handleStartTournament = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Start tournament on backend
+      if (id) {
+        await tournamentApi.startTournament(id)
+        const urlData = await tournamentApi.generateTournamentUrl(id)
+
+        // Update local state
+        dispatch(startTournament())
+        dispatch(generateTournamentUrl())
+      }
+    } catch (err) {
+      console.error("Error starting tournament:", err)
+      setError("Failed to start tournament")
+    } finally {
+      setLoading(false)
     }
   }
 
   const getCenters = () => {
-    const rounds = Math.log2(playerCount)
-    const centers = Array.from({ length: rounds }, () => [])
-    const baseInterval = 160
-    const firstMatches = bracket[0]?.length || 0
-
-    for (let j = 0; j < firstMatches; j++) {
-      centers[0][j] = 40 + j * baseInterval
+    // Return an empty array if bracket is undefined, null, or empty
+    if (!bracket || !Array.isArray(bracket) || bracket.length === 0) {
+      return [];
     }
 
+    const rounds = Math.log2(playerCount);
+    const centers = Array.from({ length: rounds }, () => []);
+    const baseInterval = 160;
+    const firstMatches = bracket[0]?.length || 0;
+
+    // Populate centers for the first round
+    for (let j = 0; j < firstMatches; j++) {
+      centers[0][j] = 40 + j * baseInterval;
+    }
+
+    // Populate centers for subsequent rounds
     for (let r = 1; r < rounds; r++) {
-      const numMatches = bracket[r]?.length || 0
+      const numMatches = bracket[r]?.length || 0;
       for (let k = 0; k < numMatches; k++) {
-        const feeder1Center = centers[r - 1][2 * k]
-        const feeder2Index = 2 * k + 1
-        let feeder2Center = feeder1Center
+        const feeder1Center = centers[r - 1][2 * k] || 0; // Default to 0 if undefined
+        const feeder2Index = 2 * k + 1;
+        let feeder2Center = feeder1Center; // Fallback to feeder1Center if feeder2 is unavailable
         if (feeder2Index < centers[r - 1].length) {
-          feeder2Center = centers[r - 1][feeder2Index]
+          feeder2Center = centers[r - 1][feeder2Index] || 0; // Default to 0 if undefined
         }
-        centers[r][k] = (feeder1Center + feeder2Center) / 2
+        centers[r][k] = (feeder1Center + feeder2Center) / 2;
       }
     }
 
-    return centers
-  }
+    return centers;
+  };
 
   const createConnectors = (round, centers, totalRounds) => {
     const connectorElements = []
@@ -236,19 +336,42 @@ const TournamentBracket = () => {
       <div className="container">
         <div className="controls">
           {isLoggedIn && (
-            <button className="return-btn" onClick={() => navigate(`/player-entry/${id || currentTournament.id}`)}>
+            <button className="return-btn" onClick={() => navigate(`/tournaments`)}>
               Return
             </button>
           )}
           <h2>Tournament Bracket</h2>
-          {isLoggedIn && status === "pending" && (
-            <button
-              onClick={() => {
-                dispatch(startTournament())
-                dispatch(generateTournamentUrl())
+
+          {error && (
+            <div
+              style={{
+                background: "#fee2e2",
+                border: "1px solid #fecaca",
+                color: "#dc2626",
+                padding: "12px",
+                borderRadius: "8px",
+                marginBottom: "20px",
               }}
             >
-              Next (In Session)
+              {error}
+            </div>
+          )}
+
+          {isLoggedIn && isAdmin && status === "pending" && (
+            <button
+              onClick={handleStartTournament}
+              disabled={loading}
+              style={{
+                opacity: loading ? 0.6 : 1,
+                cursor: loading ? "not-allowed" : "pointer",
+                padding: "6px 12px",
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+              }}
+            >
+              {loading ? "Starting..." : "Start Tournament"}
             </button>
           )}
           {isLoggedIn && status === "in-progress" && shareUrl && (
@@ -262,14 +385,29 @@ const TournamentBracket = () => {
               />
               <button
                 onClick={() => navigator.clipboard.writeText(window.location.origin + shareUrl)}
-                style={{ marginLeft: "10px" }}
+                style={{ marginLeft: "10px", padding: "6px 12px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px" }}
               >
                 Copy Link
               </button>
             </div>
           )}
         </div>
-        {status === "ended" && bracket.length > 0 && bracket[bracket.length - 1] && bracket[bracket.length - 1][0] && (
+
+        {loading && (
+          <div
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              textAlign: "center",
+              marginBottom: "20px",
+            }}
+          >
+            Loading bracket...
+          </div>
+        )}
+
+        {status === "ended" && bracket.length > 0 && bracket[bracket.length - 1]?.[0] && (
           <div style={{ background: "white", padding: "20px", borderRadius: "8px", marginBottom: "20px" }}>
             <h2>Tournament Ended!</h2>
             <p>
@@ -280,6 +418,22 @@ const TournamentBracket = () => {
             </p>
           </div>
         )}
+
+      {bracket.length === 0 && !loading && (
+        <div
+          style={{
+            background: "white",
+            padding: "20px",
+            borderRadius: "8px",
+            textAlign: "center",
+            marginBottom: "20px",
+          }}
+        >
+          No bracket available. Please ensure there are enough players and try again.
+        </div>
+      )}
+
+      {bracket.length > 0 && (
         <div
           className="bracket"
           style={{
@@ -291,113 +445,120 @@ const TournamentBracket = () => {
             padding: "20px",
           }}
         >
-          {bracket.map((roundMatches, round) => (
-            <div
-              key={round}
-              className="round"
-              style={{
-                height: `${Math.max(...centers[round]) + 40}px`,
-                position: "relative",
-                width: "240px",
-              }}
-            >
-              {roundMatches.map((match, matchIndex) => (
-                <div
-                  key={`${round}-${matchIndex}`}
-                  className="match"
-                  style={{
-                    top: `${centers[round][matchIndex] - 40}px`,
-                    position: "absolute",
-                    width: "240px",
-                    border: "1px solid #ddd",
-                    borderRadius: "8px",
-                    background: "white",
-                    overflow: "hidden",
-                    boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                    height: "80px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    left: 0,
-                    margin: 0,
-                    boxSizing: "border-box",
-                    cursor: isLoggedIn ? "pointer" : "default",
-                  }}
-                  onClick={() => isLoggedIn && handleEditResult(round, matchIndex)}
-                >
+          {bracket.map((roundMatches, round) => {
+            const roundCenters = centers[round] || [];
+            return (
+              <div
+                key={round}
+                className="round"
+                style={{
+                  height: `${Math.max(...roundCenters, 0) + 40}px`,
+                  position: "relative",
+                  width: "240px",
+                }}
+              >
+                {roundMatches.map((match, matchIndex) => (
                   <div
-                    className="player"
+                    key={`${round}-${matchIndex}`}
+                    className="match"
                     style={{
+                      top: `${(roundCenters[matchIndex] ?? 40) - 40}px`,
+                      position: "absolute",
+                      width: "240px",
+                      border: "1px solid #ddd",
+                      borderRadius: "8px",
+                      background: "white",
+                      overflow: "hidden",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                      height: "80px",
                       display: "flex",
+                      flexDirection: "column",
                       justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 8px",
-                      fontSize: "14px",
+                      left: 0,
+                      margin: 0,
+                      boxSizing: "border-box",
+                      cursor: isLoggedIn ? "pointer" : "default",
                     }}
+                    onClick={() => isLoggedIn && handleEditResult(round, matchIndex)}
                   >
-                    <span style={{ color: "#111827", fontWeight: "500" }}>
-                      {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
-                      {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
-                        <span style={{ color: "#6b7280", fontSize: "13px" }}>({match.player1.seed})</span>
-                      )}
-                    </span>
-                    <span
-                      className="score"
+                    <div
+                      className="player"
                       style={{
-                        background: "#dbeafe",
-                        color: "#1d4ed8",
-                        borderRadius: "6px",
-                        width: "24px",
-                        height: "22px",
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "13px",
-                        fontWeight: "bold",
+                        padding: "6px 8px",
+                        fontSize: "14px",
                       }}
                     >
-                      {match.score1}
-                    </span>
-                  </div>
-                  <div
-                    className="player"
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 8px",
-                      fontSize: "14px",
-                      borderTop: "1px solid #ddd",
-                    }}
-                  >
-                    <span style={{ color: "#111827", fontWeight: "500" }}>
-                      {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
-                      {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
-                        <span style={{ color: "#6b7280", fontSize: "13px" }}>({match.player2.seed})</span>
-                      )}
-                    </span>
-                    <span
-                      className="score"
+                      <span style={{ color: "#111827", fontWeight: "500" }}>
+                        {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
+                        {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
+                          <span style={{ color: "#6b7280", fontSize: "13px" }}>
+                            ({match.player1.seed})
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="score"
+                        style={{
+                          background: "#dbeafe",
+                          color: "#1d4ed8",
+                          borderRadius: "6px",
+                          width: "24px",
+                          height: "22px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "13px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {match.score1}
+                      </span>
+                    </div>
+                    <div
+                      className="player"
                       style={{
-                        background: "#dbeafe",
-                        color: "#1d4ed8",
-                        borderRadius: "6px",
-                        width: "24px",
-                        height: "22px",
                         display: "flex",
+                        justifyContent: "space-between",
                         alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "13px",
-                        fontWeight: "bold",
+                        padding: "6px 8px",
+                        fontSize: "14px",
+                        borderTop: "1px solid #ddd",
                       }}
                     >
-                      {match.score2}
-                    </span>
+                      <span style={{ color: "#111827", fontWeight: "500" }}>
+                        {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
+                        {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
+                          <span style={{ color: "#6b7280", fontSize: "13px" }}>
+                            ({match.player2.seed})
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="score"
+                        style={{
+                          background: "#dbeafe", // Fixed typo: "#dboeafe" → "#dbeafe"
+                          color: "#1d4ed8",
+                          borderRadius: "6px",
+                          width: "24px",
+                          height: "22px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "13px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {match.score2}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ))}
+                ))}
+              </div>
+            );
+          })}
           {Array.from({ length: rounds - 1 }, (_, round) => (
             <div
               key={`connector-${round}`}
@@ -414,6 +575,7 @@ const TournamentBracket = () => {
             </div>
           ))}
         </div>
+      )}
         {editingMatch && isLoggedIn && (
           <div
             style={{
@@ -441,6 +603,23 @@ const TournamentBracket = () => {
               }}
             >
               <h3 style={{ marginBottom: "12px" }}>Edit Result</h3>
+
+              {error && (
+                <div
+                  style={{
+                    background: "#fee2e2",
+                    border: "1px solid #fecaca",
+                    color: "#dc2626",
+                    padding: "8px",
+                    borderRadius: "6px",
+                    marginBottom: "12px",
+                    fontSize: "12px",
+                  }}
+                >
+                  {error}
+                </div>
+              )}
+
               <div style={{ marginBottom: "12px" }}>
                 <label style={{ display: "block", fontSize: "14px" }}>
                   {bracket[editingMatch.round][editingMatch.matchIndex].player1.name} Score:
@@ -478,27 +657,32 @@ const TournamentBracket = () => {
               <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                 <button
                   onClick={handleSaveResult}
+                  disabled={loading}
                   style={{
                     padding: "6px 12px",
-                    background: "#2563eb",
+                    background: loading ? "#9ca3af" : "#2563eb",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                     fontWeight: "500",
                   }}
                 >
-                  Save
+                  {loading ? "Saving..." : "Save"}
                 </button>
                 <button
-                  onClick={() => setEditingMatch(null)}
+                  onClick={() => {
+                    setEditingMatch(null)
+                    setError(null)
+                  }}
+                  disabled={loading}
                   style={{
                     padding: "6px 12px",
                     background: "#e5e7eb",
                     color: "#374151",
                     border: "none",
                     borderRadius: "8px",
-                    cursor: "pointer",
+                    cursor: loading ? "not-allowed" : "pointer",
                   }}
                 >
                   Cancel

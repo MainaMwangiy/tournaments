@@ -1,23 +1,46 @@
-import { useState } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { loginSuccess } from "../redux/actions"
-import { Navigate, useNavigate } from "react-router-dom"
-import { signInWithPopup } from "firebase/auth"
-import { auth, googleProvider } from "../utils/firebase"
-import { v4 as uuidv4 } from "uuid"
-import axios from "axios"
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { loginSuccess } from "../redux/actions";
+import { Navigate, useNavigate } from "react-router-dom";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../utils/firebase";
+import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
+import Cookies from "js-cookie";
 
 const Login = () => {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn)
-  const [isLoading, setIsLoading] = useState(false)
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const restoreSession = () => {
+      const token = Cookies.get("token");
+      const storedUser = localStorage.getItem("user");
+
+      if (token && storedUser) {
+        try {
+          const user = JSON.parse(storedUser);
+          dispatch(loginSuccess(user));
+          navigate("/tournaments");
+        } catch (error) {
+          console.error("Failed to restore session:", error);
+          Cookies.remove("token");
+          localStorage.removeItem("user");
+        }
+      }
+      setIsLoading(false);
+    };
+
+    restoreSession();
+  }, [dispatch, navigate]);
 
   const handleGoogleSignIn = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const result = await signInWithPopup(auth, googleProvider)
-      const user = result.user
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
 
       const userData = {
         user_id: uuidv4(),
@@ -26,31 +49,31 @@ const Login = () => {
         image_url: user.photoURL,
         role: "user",
         provider: "google",
-      }
-      // Send to backend SSO endpoint
-      const response = await axios.post("http://localhost:5000/api/v1/auth/sso", userData)
+      };
+
+      const response = await axios.post("http://localhost:5000/api/v1/auth/sso", userData);
 
       if (response.data.success) {
-        const { user: dbUser, token } = response.data
-
-        // Store in localStorage
-        localStorage.setItem("token", token)
-        localStorage.setItem("user", JSON.stringify(dbUser))
-
-        // Update Redux state
-        dispatch(loginSuccess(dbUser))
-        navigate("/tournaments")
+        const { user: dbUser, token } = response.data;
+        Cookies.set("token", token, { expires: 7, secure: true, sameSite: "strict" });
+        localStorage.setItem("user", JSON.stringify(dbUser));
+        dispatch(loginSuccess(dbUser));
+        navigate("/tournaments");
       }
     } catch (error) {
-      console.error("Google sign-in failed:", error)
-      alert("Sign in failed. Please try again.")
+      console.error("Google sign-in failed:", error);
+      alert("Sign in failed. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
   }
 
   if (isLoggedIn) {
-    return <Navigate to="/tournaments" />
+    return <Navigate to="/tournaments" />;
   }
 
   // ===== Styles =====
@@ -63,7 +86,7 @@ const Login = () => {
     alignItems: "center",
     justifyContent: "center",
     fontFamily: "Inter, sans-serif",
-  }
+  };
 
   const cardStyle = {
     background: "white",
@@ -74,20 +97,20 @@ const Login = () => {
     width: "100%",
     maxWidth: "400px",
     textAlign: "center",
-  }
+  };
 
   const titleStyle = {
     fontSize: "28px",
     fontWeight: "700",
     color: "#111827",
     marginBottom: "8px",
-  }
+  };
 
   const subtitleStyle = {
     fontSize: "15px",
     color: "#6b7280",
     marginBottom: "32px",
-  }
+  };
 
   const googleButtonStyle = {
     width: "100%",
@@ -142,4 +165,4 @@ const Login = () => {
   )
 }
 
-export default Login
+export default Login;
