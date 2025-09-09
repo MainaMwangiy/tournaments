@@ -160,11 +160,8 @@ const TournamentBracket = () => {
         // Update local state
         dispatch(updateMatchResult(matchData))
 
-        // Update on backend
         if (id) {
-          await tournamentApi.updateTournament(id, {
-            matchResult: matchData,
-          })
+          await tournamentApi.updateMatchResult(id, matchData)
         }
 
         setEditingMatch(null)

@@ -88,8 +88,26 @@ export const tournamentApi = {
   },
 
   // Generate tournament URL
-  generateTournamentUrl: async (id) => {
-    const response = await apiClient.post(`/tournaments/generate-url/${id}`);
+ generateTournamentUrl: async (id) => {
+    const response = await apiClient.post(`${API_BASE_URL}/tournaments/generate-url/${id}`);
+    return response.data;
+  },
+
+  // Fixed: use apiClient, API_BASE_URL
+  updateMatchResult: async (tournamentId, matchData) => {
+    const response = await apiClient.put(`${API_BASE_URL}/tournaments/${tournamentId}/match-result`, matchData);
+    return response.data;
+  },
+
+  // New: for saving bracket
+  saveBracket: async (tournamentId, bracket, players) => {
+    const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/bracket`, { bracket, players });
+    return response.data;
+  },
+
+  // New: for adding player from PlayerEntry
+  addPlayer: async (tournamentId, playerData) => {
+    const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/player`, playerData);
     return response.data;
   },
 };
