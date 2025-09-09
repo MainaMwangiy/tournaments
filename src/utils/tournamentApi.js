@@ -5,8 +5,9 @@ const API_BASE_URL = 'http://localhost:5000/api/v1';
 
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: API_BASE_URL, headers: { Authorization: `Bearer ${localStorage.getItem("rabbit_farm_token")}` },
-});
+  baseURL: API_BASE_URL,
+  headers: { Authorization: `Bearer ${localStorage.getItem("rabbit_farm_token")}` },
+})
 
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
@@ -28,9 +29,13 @@ apiClient.interceptors.response.use(
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
-    return Promise.reject(error);
-  }
-);
+    return Promise.reject(error)
+  },
+)
+
+const getToken = () => {
+  return Cookies.get("token") || localStorage.getItem("rabbit_farm_token")
+}
 
 export const tournamentApi = {
   // Create tournament
@@ -100,14 +105,27 @@ export const tournamentApi = {
   },
 
   // New: for saving bracket
-  saveBracket: async (tournamentId, bracket, players) => {
-    const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/bracket`, { bracket, players });
-    return response.data;
+  saveBracket: async (tournamentId, bracketData) => {
+    const response = await fetch(`${API_BASE_URL}/tournaments/${tournamentId}/save-bracket`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify(bracketData),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.message || "Failed to save bracket")
+    }
+
+    return response.json()
   },
 
   // New: for adding player from PlayerEntry
   addPlayer: async (tournamentId, playerData) => {
-    const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/player`, playerData);
-    return response.data;
+    const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/player`, playerData)
+    return response.data
   },
 };

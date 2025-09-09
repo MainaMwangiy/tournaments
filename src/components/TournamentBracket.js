@@ -21,10 +21,9 @@ const TournamentBracket = () => {
   const { players, bracket, status, shareUrl } = useSelector((state) => state.tournament)
   const currentTournament = useSelector((state) => state.tournament)
   const effectivePlayers = players.length > 0 ? players : currentTournament.entryList || []
-  const playerCount = effectivePlayers.length > 0 
-    ? effectivePlayers.length 
-    : bracket[0]?.length ? bracket[0].length * 2 : 0;
-  const isValidPlayerCount = playerCount > 0 && Number.isInteger(Math.log2(playerCount));
+  const playerCount =
+    effectivePlayers.length > 0 ? effectivePlayers.length : bracket[0]?.length ? bracket[0].length * 2 : 0
+  const isValidPlayerCount = playerCount > 0 && Number.isInteger(Math.log2(playerCount))
 
   const [editingMatch, setEditingMatch] = useState(null)
   const [score1, setScore1] = useState("")
@@ -93,16 +92,16 @@ const TournamentBracket = () => {
           match1.score1 > match1.score2
             ? match1.player1
             : match1.score1 === 0 && match1.score2 === 0
-            ? { name: "TBD", seed: 0 }
-            : match1.player2
+              ? { name: "TBD", seed: 0 }
+              : match1.player2
         let winner2 = { name: "TBD", seed: 0 }
         if (match2) {
           winner2 =
             match2.score1 > match2.score2
               ? match2.player1
               : match2.score1 === 0 && match2.score2 === 0
-              ? { name: "TBD", seed: 0 }
-              : match2.player2
+                ? { name: "TBD", seed: 0 }
+                : match2.player2
         }
         nextRound.push({
           player1: winner1,
@@ -121,15 +120,14 @@ const TournamentBracket = () => {
   const generateBracket = async () => {
     try {
       const newBracket = createBracketStructure(effectivePlayers)
-      if (newBracket.length === 0) return // Exit if bracket creation failed
+      if (newBracket.length === 0) return;
       dispatch(updateBracket(newBracket))
 
-      // Update bracket on backend
       if (id) {
-        // await tournamentApi.updateTournament(id, {
-        //   bracket: newBracket,
-        //   players: effectivePlayers,
-        // })
+        await tournamentApi.saveBracket(id, {
+          bracket: newBracket,
+          players: effectivePlayers,
+        })
       }
     } catch (err) {
       console.error("Error updating bracket:", err)
