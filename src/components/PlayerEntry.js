@@ -16,7 +16,11 @@ const PlayerEntry = () => {
 
   const handleAddPlayer = () => {
     if (name.trim()) {
-      const newPlayer = { name: name.trim() }
+      const newPlayer = {
+        name: name.trim(),
+        seed: players.length + 1,
+        id: Date.now() + Math.random(),
+      }
       dispatch(addPlayer(newPlayer))
 
       const updatedPlayers = [...players, newPlayer]
@@ -245,6 +249,7 @@ const PlayerEntry = () => {
           <thead>
             <tr>
               <th style={thStyle}>🏅 Player Name</th>
+              <th style={thStyle}>Seed</th>
             </tr>
           </thead>
           <tbody>
@@ -252,11 +257,12 @@ const PlayerEntry = () => {
               players.map((player, index) => (
                 <tr key={index} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
                   <td style={tdStyle}>{player.name}</td>
+                  <td style={tdStyle}>{player.seed}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td style={emptyRowStyle}>🎯 No players added yet. Add your first player above!</td>
+                <td style={emptyRowStyle} colSpan={2}>🎯 No players added yet. Add your first player above!</td>
               </tr>
             )}
           </tbody>

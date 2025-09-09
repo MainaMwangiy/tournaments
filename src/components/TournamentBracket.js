@@ -21,7 +21,10 @@ const TournamentBracket = () => {
   const { players, bracket, status, shareUrl } = useSelector((state) => state.tournament)
   const currentTournament = useSelector((state) => state.tournament)
   const effectivePlayers = players.length > 0 ? players : currentTournament.entryList || []
-  const playerCount = effectivePlayers.length
+  const playerCount = effectivePlayers.length > 0 
+    ? effectivePlayers.length 
+    : bracket[0]?.length ? bracket[0].length * 2 : 0;
+  const isValidPlayerCount = playerCount > 0 && Number.isInteger(Math.log2(playerCount));
 
   const [editingMatch, setEditingMatch] = useState(null)
   const [score1, setScore1] = useState("")
@@ -199,8 +202,8 @@ const TournamentBracket = () => {
   }
 
   const getCenters = () => {
-    // Return an empty array if bracket is undefined, null, or empty
-    if (!bracket || !Array.isArray(bracket) || bracket.length === 0) {
+    // Return an empty array if bracket is invalid or playerCount is invalid
+    if (!bracket || !Array.isArray(bracket) || bracket.length === 0 || !isValidPlayerCount) {
       return [];
     }
 
@@ -218,11 +221,11 @@ const TournamentBracket = () => {
     for (let r = 1; r < rounds; r++) {
       const numMatches = bracket[r]?.length || 0;
       for (let k = 0; k < numMatches; k++) {
-        const feeder1Center = centers[r - 1][2 * k] || 0; // Default to 0 if undefined
+        const feeder1Center = centers[r - 1][2 * k] || 0;
         const feeder2Index = 2 * k + 1;
-        let feeder2Center = feeder1Center; // Fallback to feeder1Center if feeder2 is unavailable
+        let feeder2Center = feeder1Center;
         if (feeder2Index < centers[r - 1].length) {
-          feeder2Center = centers[r - 1][feeder2Index] || 0; // Default to 0 if undefined
+          feeder2Center = centers[r - 1][feeder2Index] || 0;
         }
         centers[r][k] = (feeder1Center + feeder2Center) / 2;
       }
@@ -233,16 +236,16 @@ const TournamentBracket = () => {
 
   const createConnectors = (round, centers, totalRounds) => {
     const connectorElements = []
-    const matchCount = centers[round].length
+    const matchCount = centers[round]?.length || 0;
 
     for (let i = 0; i < matchCount; i += 2) {
       const match1Index = i
       const match2Index = i + 1
-      const match1Center = centers[round][match1Index]
+      const match1Center = centers[round][match1Index] || 0
       let match2Center = match1Center
       let hasMatch2 = false
       if (match2Index < matchCount) {
-        match2Center = centers[round][match2Index]
+        match2Center = centers[round][match2Index] || 0
         hasMatch2 = true
       }
       const connectionPoint = (match1Center + match2Center) / 2
@@ -311,12 +314,12 @@ const TournamentBracket = () => {
   }, [id, tournaments, dispatch])
 
   useEffect(() => {
-    if (effectivePlayers.length >= 4 && bracket.length === 0) {
+    if (effectivePlayers.length >= 4 && bracket.length === 0 && isValidPlayerCount) {
       generateBracket()
     }
-  }, [effectivePlayers])
+  }, [effectivePlayers, bracket, isValidPlayerCount])
 
-  const rounds = Math.log2(playerCount)
+  const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0;
   const centers = getCenters()
 
   return (
@@ -357,13 +360,28 @@ const TournamentBracket = () => {
             </div>
           )}
 
+          {!isValidPlayerCount && bracket.length > 0 && (
+            <div
+              style={{
+                background: "#fee2e2",
+                border: "1px solid #fecaca",
+                color: "#dc2626",
+                padding: "12px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+              }}
+            >
+              Invalid tournament structure: Number of players must be a power of 2.
+            </div>
+          )}
+
           {isLoggedIn && isAdmin && status === "pending" && (
             <button
               onClick={handleStartTournament}
-              disabled={loading}
+              disabled={loading || !isValidPlayerCount}
               style={{
-                opacity: loading ? 0.6 : 1,
-                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading || !isValidPlayerCount ? 0.6 : 1,
+                cursor: loading || !isValidPlayerCount ? "not-allowed" : "pointer",
                 padding: "6px 12px",
                 background: "#2563eb",
                 color: "white",
@@ -433,7 +451,7 @@ const TournamentBracket = () => {
         </div>
       )}
 
-      {bracket.length > 0 && (
+      {bracket.length > 0 && isValidPlayerCount && (
         <div
           className="bracket"
           style={{
@@ -539,7 +557,7 @@ const TournamentBracket = () => {
                       <span
                         className="score"
                         style={{
-                          background: "#dbeafe", // Fixed typo: "#dboeafe" → "#dbeafe"
+                          background: "#dbeafe",
                           color: "#1d4ed8",
                           borderRadius: "6px",
                           width: "24px",
