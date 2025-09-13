@@ -354,11 +354,11 @@ const TournamentBracket = () => {
       <div className="container">
         <div className="controls">
           {isLoggedIn && (
-            <button className="return-btn" onClick={() => navigate(`/tournament-detail/${id}`)}>
-              Return
+            <button className="return-btn" onClick={() => navigate(`/tournament-details/${id}`)}>
+              Return asdDadwD
             </button>
           )}
-          <h2>Tournament Bracket</h2>
+          <h2>Tournament Bracket fasdasf</h2>
 
           {error && (
             <div

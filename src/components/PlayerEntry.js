@@ -264,7 +264,7 @@ const PlayerEntry = () => {
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        <button style={returnBtnStyle} onClick={() => navigate(`/tournament-detail/${id}`)}>
+        <button style={returnBtnStyle} onClick={() => navigate(`/tournament-details/${id}`)}>
           ← Return
         </button>
 

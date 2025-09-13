@@ -1,9 +1,10 @@
 
 import { useSelector } from "react-redux"
-import { useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 
 const TournamentView = () => {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { players, bracket, status } = useSelector((state) => state.tournament)
 
   // For now, we'll show the current tournament if it exists and is in progress
@@ -234,7 +235,7 @@ const TournamentView = () => {
           }}
         >
           <button
-            onClick={() => window.history.back()}
+            onClick={() => navigate(`/tournament-details/${id}`)}
             style={{
               padding: "10px 16px",
               fontSize: "14px",
@@ -247,7 +248,7 @@ const TournamentView = () => {
               transition: "all 0.2s ease",
             }}
           >
-            ← Return
+            ← Return dAad
           </button>
           <div style={{ textAlign: "center" }}>
             <h1
