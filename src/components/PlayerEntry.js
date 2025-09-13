@@ -18,7 +18,6 @@ const PlayerEntry = () => {
 
   useEffect(() => {
     const fetchTournamentData = async () => {
-      debugger
       if (id) {
         try {
           setLoading(true)
@@ -52,11 +51,10 @@ const PlayerEntry = () => {
       try {
         setLoading(true)
         setError(null)
-        debugger
         if (id) {
           const playerData = {
             name: name.trim(),
-            seed: players.length + 1,
+            seed: Math.floor(Math.random() * 100) + 1,
             tournament_id: id, 
           }
 
@@ -64,31 +62,18 @@ const PlayerEntry = () => {
           const result = await tournamentApi.addPlayer(id, playerData)
           console.log("[v0] Player added successfully:", result)
 
-          const newPlayer = {
-            id: result.id || Date.now() + Math.random(),
-            name: name.trim(),
-            seed: players.length + 1,
-          }
-          setPlayers((prev) => [...prev, newPlayer])
+          const updatedDetails = await tournamentApi.getTournamentDetails(id)
+          const updatedPlayers =
+            updatedDetails.data.entries?.map((entry) => ({
+              id: entry.id,
+              name: entry.player_name,
+              seed: entry.seed_number || 0,
+            })) || []
+          setPlayers(updatedPlayers)
+          console.log("[v0] Updated player list:", updatedPlayers)
 
-          setTimeout(async () => {
-            try {
-              const updatedDetails = await tournamentApi.getTournamentDetails(id)
-              const updatedPlayers =
-                updatedDetails.entries?.map((entry) => ({
-                  id: entry.id,
-                  name: entry.player_name,
-                  seed: entry.seed_number || 0,
-                })) || []
-              setPlayers(updatedPlayers)
-              console.log("[v0] Refreshed player list:", updatedPlayers)
-            } catch (refreshError) {
-              console.error("Failed to refresh player list:", refreshError)
-            }
-          }, 500)
+          setName("")
         }
-
-        setName("")
       } catch (err) {
         console.error("Error adding player:", err)
         setError(`Failed to add player: ${err.message || "Unknown error"}`)
@@ -103,7 +88,6 @@ const PlayerEntry = () => {
   }
 
   const handleKeyPress = (e) => {
-    debugger
     if (e.key === "Enter" && !loading) {
       handleAddPlayer()
     }
