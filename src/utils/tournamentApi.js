@@ -1,7 +1,9 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
-const API_BASE_URL = 'http://localhost:5000/api/v1';
+const baseURL = process.env.NODE_ENV === 'production' ? process.env.REACT_APP_PROD_BACKEND_URL : process.env.REACT_APP_DEV_BACKEND_URL;
+
+const API_BASE_URL =  `${baseURL}/api/v1`;
 
 // Create axios instance with default config
 const apiClient = axios.create({
