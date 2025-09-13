@@ -334,7 +334,7 @@ const TournamentBracket = () => {
       <div className="container">
         <div className="controls">
           {isLoggedIn && (
-            <button className="return-btn" onClick={() => navigate(`/tournaments`)}>
+            <button className="return-btn" onClick={() => navigate(`/tournament-details/${id}`)}>
               Return
             </button>
           )}

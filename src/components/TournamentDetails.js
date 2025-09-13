@@ -1,6 +1,8 @@
+import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { generateTournamentUrl } from "../redux/actions"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
+import { tournamentApi } from "../utils/tournamentApi"
 
 const TournamentDetails = () => {
   const dispatch = useDispatch()
@@ -8,31 +10,58 @@ const TournamentDetails = () => {
   const { id } = useParams()
   const isLoggedIn = useSelector((state) => state.auth.isLoggedIn)
   const isAdmin = useSelector((state) => state.auth.isAdmin)
-  const tournaments = useSelector((state) => state.tournaments)
-  const currentTournament = useSelector((state) => state.tournament)
+  const [tournament, setTournament] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  const tournament = tournaments.find((t) => t.id === Number.parseInt(id)) || currentTournament
+  useEffect(() => {
+    const fetchTournamentData = async () => {
+      if (id) {
+        try {
+          setLoading(true)
+          const details = await tournamentApi.getTournamentDetails(id)
+          setTournament(details?.data)
+          console.log("[v0] Loaded tournament details:", details)
+        } catch (err) {
+          console.error("Failed to fetch tournament details:", err)
+          setError("Failed to load tournament details")
+        } finally {
+          setLoading(false)
+        }
+      }
+    }
+
+    fetchTournamentData()
+  }, [id])
 
   const handleGenerateLink = () => {
     dispatch(generateTournamentUrl())
-    const shareUrl = `/bracket/${tournament.id}`
+    const shareUrl = `/bracket/${tournament?.id}`
     navigator.clipboard.writeText(window.location.origin + shareUrl)
     alert("Tournament link copied to clipboard!")
   }
 
   const handleAddEntries = () => {
-    navigate(`/player-entry/${tournament.id}`)
+    navigate(`/player-entry/${tournament?.id}`)
   }
 
   const handleViewBracket = () => {
-    navigate(`/bracket/${tournament.id}`)
+    navigate(`/bracket/${tournament?.id}`)
   }
 
   if (!isLoggedIn) {
     return <Navigate to="/login" />
   }
 
-  if (!tournament) {
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif" }}>
+        <p>Loading tournament...</p>
+      </div>
+    )
+  }
+
+  if (!tournament || error) {
     return <Navigate to="/tournaments" />
   }
 
@@ -173,11 +202,11 @@ const TournamentDetails = () => {
           }}
         >
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: "700", color: "#3b82f6" }}>{tournament.players || 0}</div>
+            <div style={{ fontSize: "32px", fontWeight: "700", color: "#3b82f6" }}>{tournament.entries?.length || 0}</div>
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Players</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: "700", color: "#10b981" }}>{tournament.createdDate}</div>
+            <div style={{ fontSize: "32px", fontWeight: "700", color: "#10b981" }}>{tournament.created_on}</div>
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Created</div>
           </div>
           {tournament.winner && (

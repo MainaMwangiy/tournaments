@@ -1,41 +1,111 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { addPlayer, saveEntryList } from "../redux/actions"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
+import { tournamentApi } from "../utils/tournamentApi"
 
 const PlayerEntry = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { id } = useParams()
   const isLoggedIn = useSelector((state) => state.auth.isLoggedIn)
-  const players = useSelector((state) => state.tournament.players)
-  const currentTournament = useSelector((state) => state.tournament)
   const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [players, setPlayers] = useState([]) 
+  const [tournamentDetails, setTournamentDetails] = useState(null)
 
-  const handleAddPlayer = () => {
-    if (name.trim()) {
-      const newPlayer = {
-        name: name.trim(),
-        seed: players.length + 1,
-        id: Date.now() + Math.random(),
+  useEffect(() => {
+    const fetchTournamentData = async () => {
+      debugger
+      if (id) {
+        try {
+          setLoading(true)
+          const details = await tournamentApi.getTournamentDetails(id)
+          setTournamentDetails(details)
+
+          const existingPlayers =
+            details?.data.entries?.map((entry) => ({
+              id: entry.id,
+              name: entry.player_name,
+              seed: entry.seed_number || 0,
+            })) || []
+          setPlayers(existingPlayers)
+
+          console.log("[v0] Loaded tournament details:", details)
+          console.log("[v0] Loaded existing players:", existingPlayers)
+        } catch (error) {
+          console.error("Failed to fetch tournament details:", error)
+          setError("Failed to load tournament details")
+        } finally {
+          setLoading(false)
+        }
       }
-      dispatch(addPlayer(newPlayer))
+    }
 
-      const updatedPlayers = [...players, newPlayer]
-      dispatch(saveEntryList(updatedPlayers))
+    fetchTournamentData()
+  }, [id])
 
-      setName("")
+  const handleAddPlayer = async () => {
+    if (name.trim()) {
+      try {
+        setLoading(true)
+        setError(null)
+        debugger
+        if (id) {
+          const playerData = {
+            name: name.trim(),
+            seed: players.length + 1,
+            tournament_id: id, 
+          }
+
+          console.log("[v0] Adding player with data:", playerData)
+          const result = await tournamentApi.addPlayer(id, playerData)
+          console.log("[v0] Player added successfully:", result)
+
+          const newPlayer = {
+            id: result.id || Date.now() + Math.random(),
+            name: name.trim(),
+            seed: players.length + 1,
+          }
+          setPlayers((prev) => [...prev, newPlayer])
+
+          setTimeout(async () => {
+            try {
+              const updatedDetails = await tournamentApi.getTournamentDetails(id)
+              const updatedPlayers =
+                updatedDetails.entries?.map((entry) => ({
+                  id: entry.id,
+                  name: entry.player_name,
+                  seed: entry.seed_number || 0,
+                })) || []
+              setPlayers(updatedPlayers)
+              console.log("[v0] Refreshed player list:", updatedPlayers)
+            } catch (refreshError) {
+              console.error("Failed to refresh player list:", refreshError)
+            }
+          }, 500)
+        }
+
+        setName("")
+      } catch (err) {
+        console.error("Error adding player:", err)
+        setError(`Failed to add player: ${err.message || "Unknown error"}`)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
   const handleNext = () => {
-    navigate(`/bracket/${id || currentTournament.id}`)
+    debugger
+    navigate(`/bracket/${id || tournamentDetails?.id}`)
   }
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter") {
+    debugger
+    if (e.key === "Enter" && !loading) {
       handleAddPlayer()
     }
   }
@@ -44,7 +114,7 @@ const PlayerEntry = () => {
     return <Navigate to="/login" />
   }
 
-  const isFormValid = name.trim()
+  const isFormValid = name.trim() && !loading
 
   // ===== Styles =====
   const containerStyle = {
@@ -113,6 +183,7 @@ const PlayerEntry = () => {
     borderRadius: "8px",
     outline: "none",
     boxSizing: "border-box",
+    opacity: loading ? 0.6 : 1,
   }
 
   const buttonStyle = {
@@ -194,7 +265,7 @@ const PlayerEntry = () => {
   return (
     <div style={containerStyle}>
       <div style={cardStyle}>
-        <button style={returnBtnStyle} onClick={() => navigate(`/tournaments`)}>
+        <button style={returnBtnStyle} onClick={() => navigate(`/tournament-detail/${id}`)}>
           ← Return
         </button>
 
@@ -207,8 +278,37 @@ const PlayerEntry = () => {
             marginBottom: "24px",
           }}
         >
-          👥 Add Players
+          👥 Add Players {tournamentDetails?.name && `- ${tournamentDetails.name}`}
         </h2>
+
+        {error && (
+          <div
+            style={{
+              background: "#fee2e2",
+              border: "1px solid #fecaca",
+              color: "#dc2626",
+              padding: "12px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              fontSize: "14px",
+            }}
+          >
+            {error}
+            <button
+              onClick={() => setError(null)}
+              style={{
+                marginLeft: "10px",
+                padding: "4px 8px",
+                background: "transparent",
+                border: "none",
+                color: "#dc2626",
+                cursor: "pointer",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div style={statusStyle}>
           <span>
@@ -228,13 +328,14 @@ const PlayerEntry = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyPress={handleKeyPress}
+              disabled={loading}
               style={inputStyle}
             />
           </div>
 
           <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
             <button onClick={handleAddPlayer} disabled={!isFormValid} style={addBtnStyle}>
-              ➕ Add Player
+              {loading ? "Adding..." : "➕ Add Player"}
             </button>
 
             <button onClick={handleNext} disabled={players.length < 4} style={nextBtnStyle}>
@@ -255,14 +356,16 @@ const PlayerEntry = () => {
           <tbody>
             {players.length > 0 ? (
               players.map((player, index) => (
-                <tr key={index} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
+                <tr key={player.id || index} style={{ backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb" }}>
                   <td style={tdStyle}>{player.name}</td>
                   <td style={tdStyle}>{player.seed}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td style={emptyRowStyle} colSpan={2}>🎯 No players added yet. Add your first player above!</td>
+                <td style={emptyRowStyle} colSpan={2}>
+                  🎯 No players added yet. Add your first player above!
+                </td>
               </tr>
             )}
           </tbody>
