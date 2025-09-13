@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux"
 import { generateTournamentUrl } from "../redux/actions"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { tournamentApi } from "../utils/tournamentApi"
+import dayjs from "dayjs"
 
 const TournamentDetails = () => {
   const dispatch = useDispatch()
@@ -206,7 +207,7 @@ const TournamentDetails = () => {
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Players</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: "700", color: "#10b981" }}>{tournament.created_on}</div>
+            <div style={{ fontSize: "32px", fontWeight: "700", color: "#10b981" }}>{dayjs(tournament.created_on).format('MM-DD-YYYY')}</div>
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Created</div>
           </div>
           {tournament.winner && (

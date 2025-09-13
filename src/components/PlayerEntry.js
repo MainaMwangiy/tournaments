@@ -99,8 +99,7 @@ const PlayerEntry = () => {
   }
 
   const handleNext = () => {
-    debugger
-    navigate(`/bracket/${id || tournamentDetails?.id}`)
+    navigate(`/bracket/${id || tournamentDetails?.data.id}`)
   }
 
   const handleKeyPress = (e) => {
