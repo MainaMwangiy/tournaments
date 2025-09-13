@@ -131,11 +131,129 @@ const TournamentView = () => {
     }
   }, [effectivePlayers, bracket, isValidPlayerCount])
 
+  // Copy getCenters from TournamentBracket (public version doesn't need auth checks)
+  const getCenters = () => {
+    if (!bracket || !Array.isArray(bracket) || bracket.length === 0 || !isValidPlayerCount) {
+      return [];
+    }
 
+    const rounds = Math.log2(playerCount);
+    const centers = Array.from({ length: rounds }, () => []);
+    const baseInterval = 160;
+    const firstMatches = bracket[0]?.length || 0;
 
- 
+    for (let j = 0; j < firstMatches; j++) {
+      centers[0][j] = 40 + j * baseInterval;
+    }
+
+    for (let r = 1; r < rounds; r++) {
+      const numMatches = bracket[r]?.length || 0;
+      for (let k = 0; k < numMatches; k++) {
+        const feeder1Center = centers[r - 1][2 * k] || 0;
+        const feeder2Index = 2 * k + 1;
+        let feeder2Center = feeder1Center;
+        if (feeder2Index < centers[r - 1].length) {
+          feeder2Center = centers[r - 1][feeder2Index] || 0;
+        }
+        centers[r][k] = (feeder1Center + feeder2Center) / 2;
+      }
+    }
+
+    return centers;
+  };
+
+  // Copy createConnectors from TournamentBracket (adjusted for inline styles to match)
+  const createConnectors = (round, centers, totalRounds) => {
+    const connectorElements = []
+    const matchCount = centers[round]?.length || 0;
+
+    for (let i = 0; i < matchCount; i += 2) {
+      const match1Index = i
+      const match2Index = i + 1
+      const match1Center = centers[round][match1Index] || 0
+      let match2Center = match1Center
+      let hasMatch2 = false
+      if (match2Index < matchCount) {
+        match2Center = centers[round][match2Index] || 0
+        hasMatch2 = true
+      }
+      const connectionPoint = (match1Center + match2Center) / 2
+
+      connectorElements.push(
+        <div
+          key={`h1-${round}-${i}`}
+          style={{
+            position: "absolute",
+            width: "30px",
+            height: "2px",
+            background: "#d1d5db",
+            left: "0px",
+            top: `${match1Center - 1}px`,
+          }}
+        />,
+      )
+
+      if (hasMatch2) {
+        connectorElements.push(
+          <div
+            key={`h2-${round}-${i}`}
+            style={{
+              position: "absolute",
+              width: "30px",
+              height: "2px",
+              background: "#d1d5db",
+              left: "0px",
+              top: `${match2Center - 1}px`,
+            }}
+          />,
+        )
+
+        connectorElements.push(
+          <div
+            key={`v-${round}-${i}`}
+            style={{
+              position: "absolute",
+              width: "2px",
+              background: "#d1d5db",
+              left: "29px",
+              top: `${Math.min(match1Center, match2Center) - 1}px`,
+              height: `${Math.abs(match2Center - match1Center) + 2}px`,
+            }}
+          />,
+        )
+      }
+
+      connectorElements.push(
+        <div
+          key={`hr-${round}-${i}`}
+          style={{
+            position: "absolute",
+            width: "30px",
+            height: "2px",
+            background: "#d1d5db",
+            left: "30px",
+            top: `${connectionPoint - 1}px`,
+          }}
+        />,
+      )
+    }
+
+    return connectorElements
+  }
+
   const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0;
+  const centers = getCenters()
 
+  // Get winner for ended tournament
+  const getWinner = () => {
+    if (status === "ended" && bracket && bracket.length > 0) {
+      const finalMatch = bracket[bracket.length - 1][0]
+      return finalMatch.score1 > finalMatch.score2 ? finalMatch.player1.name : finalMatch.player2.name
+    }
+    return null
+  }
+
+  const winner = getWinner()
 
   // Loading state
   if (loading) {
@@ -235,128 +353,6 @@ const TournamentView = () => {
       </div>
     )
   }
-  const getCenters = () => {
-    if (!bracket || !Array.isArray(bracket) || bracket.length === 0 || !isValidPlayerCount) {
-      return [];
-    }
-
-    const rounds = Math.log2(playerCount);
-    const centers = Array.from({ length: rounds }, () => []);
-    const baseInterval = 160;
-    const firstMatches = bracket[0]?.length || 0;
-
-    for (let j = 0; j < firstMatches; j++) {
-      centers[0][j] = 40 + j * baseInterval;
-    }
-
-    for (let r = 1; r < rounds; r++) {
-      const numMatches = bracket[r]?.length || 0;
-      for (let k = 0; k < numMatches; k++) {
-        const feeder1Center = centers[r - 1][2 * k] || 0;
-        const feeder2Index = 2 * k + 1;
-        let feeder2Center = feeder1Center;
-        if (feeder2Index < centers[r - 1].length) {
-          feeder2Center = centers[r - 1][feeder2Index] || 0;
-        }
-        centers[r][k] = (feeder1Center + feeder2Center) / 2;
-      }
-    }
-
-    return centers;
-  };
-   // Copy createConnectors from TournamentBracket (adjusted for inline styles to match)
-  const createConnectors = (round, centers, totalRounds) => {
-    const connectorElements = []
-    const matchCount = centers[round]?.length || 0;
-
-    for (let i = 0; i < matchCount; i += 2) {
-      const match1Index = i
-      const match2Index = i + 1
-      const match1Center = centers[round][match1Index] || 0
-      let match2Center = match1Center
-      let hasMatch2 = false
-      if (match2Index < matchCount) {
-        match2Center = centers[round][match2Index] || 0
-        hasMatch2 = true
-      }
-      const connectionPoint = (match1Center + match2Center) / 2
-
-      connectorElements.push(
-        <div
-          key={`h1-${round}-${i}`}
-          style={{
-            position: "absolute",
-            width: "30px",
-            height: "2px",
-            background: "#d1d5db",
-            left: "0px",
-            top: `${match1Center - 1}px`,
-          }}
-        />,
-      )
-
-      if (hasMatch2) {
-        connectorElements.push(
-          <div
-            key={`h2-${round}-${i}`}
-            style={{
-              position: "absolute",
-              width: "30px",
-              height: "2px",
-              background: "#d1d5db",
-              left: "0px",
-              top: `${match2Center - 1}px`,
-            }}
-          />,
-        )
-
-        // Vertical connecting line
-        connectorElements.push(
-          <div
-            key={`v-${round}-${i}`}
-            style={{
-              position: "absolute",
-              width: "2px",
-              background: "#d1d5db",
-              left: "29px",
-              top: `${Math.min(match1Center, match2Center) - 1}px`,
-              height: `${Math.abs(match2Center - match1Center) + 2}px`,
-            }}
-          />,
-        )
-      }
-
-      // Horizontal line to next round
-      connectorElements.push(
-        <div
-          key={`hr-${round}-${i}`}
-          style={{
-            position: "absolute",
-            width: "30px",
-            height: "2px",
-            background: "#d1d5db",
-            left: "30px",
-            top: `${connectionPoint - 1}px`,
-          }}
-        />,
-      )
-    }
-
-    return connectorElements
-  }
-
-  const centers = getCenters()
-
-  // Get winner for ended tournament
-  const getWinner = () => {
-    if (status === "ended" && bracket && bracket.length > 0) {
-      const finalMatch = bracket[bracket.length - 1][0]
-      return finalMatch.score1 > finalMatch.score2 ? finalMatch.player1.name : finalMatch.player2.name
-    }
-    return null
-  }
-
-  const winner = getWinner()
 
   return (
     <div
@@ -367,8 +363,8 @@ const TournamentView = () => {
         fontFamily: "Inter, sans-serif",
         padding: "20px",
         display: "flex",
-        justifyContent: "center",
-        alignItems: "flex-start",
+        flexDirection: "column",
+        alignItems: "center",
       }}
     >
       {/* Header */}
@@ -392,7 +388,7 @@ const TournamentView = () => {
           }}
         >
           <button
-            onClick={() => window.history.back()}  // Changed to back() for public users (no details access)
+            onClick={() => window.history.back()}
             style={{
               padding: "10px 16px",
               fontSize: "14px",
@@ -478,72 +474,89 @@ const TournamentView = () => {
         )}
       </div>
 
-      {/* Bracket (aligned to TournamentBracket structure) */}
+      {/* Bracket Container */}
       <div
         style={{
           maxWidth: "100%",
           overflowX: "auto",
+          overflowY: "visible",
           background: "white",
           borderRadius: "12px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
           border: "1px solid #e5e7eb",
-          padding: "0 20px",
+          padding: "20px",
+          width: "fit-content",
         }}
       >
         {bracket.length > 0 && isValidPlayerCount ? (
           <div
             style={{
               display: "flex",
-              gap: "60px",
+              flexDirection: "column",
               alignItems: "flex-start",
-              position: "relative",
-              minWidth: "fit-content",
             }}
           >
-            {bracket.map((roundMatches, round) => {
-              const roundCenters = centers[round] || [];
-              const maxHeight = Math.max(...roundCenters, 0) + 40;
-              return (
+            {/* Round Headers */}
+            <div
+              style={{
+                display: "flex",
+                gap: "60px",
+                marginBottom: "20px",
+                minWidth: "fit-content",
+              }}
+            >
+              {bracket.map((_, round) => (
                 <div
-                  key={round}
+                  key={`header-${round}`}
                   style={{
                     width: "240px",
+                    textAlign: "center",
+                    padding: "8px 16px",
+                    background: "#f3f4f6",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
-                  {/* Round Header */}
-                  <div
+                  <h3
                     style={{
-                      textAlign: "center",
-                      marginBottom: "20px",
-                      padding: "8px 16px",
-                      background: "#f3f4f6",
-                      borderRadius: "8px",
-                      border: "1px solid #e5e7eb",
+                      margin: 0,
+                      fontSize: "14px",
+                      fontWeight: "600",
+                      color: "#374151",
                     }}
                   >
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
-                      {round === bracket.length - 1
-                        ? "Final"
-                        : round === bracket.length - 2
-                          ? "Semi-Final"
-                          : round === bracket.length - 3
-                            ? "Quarter-Final"
-                            : `Round ${round + 1}`}
-                    </h3>
-                  </div>
+                    {round === bracket.length - 1
+                      ? "Final"
+                      : round === bracket.length - 2
+                        ? "Semi-Final"
+                        : round === bracket.length - 3
+                          ? "Quarter-Final"
+                          : `Round ${round + 1}`}
+                  </h3>
+                </div>
+              ))}
+            </div>
 
-                  {/* Matches Container */}
+            {/* Bracket Rounds */}
+            <div
+              style={{
+                display: "flex",
+                gap: "60px",
+                alignItems: "flex-start",
+                position: "relative",
+                minWidth: "fit-content",
+              }}
+            >
+              {bracket.map((roundMatches, round) => {
+                const roundCenters = centers[round] || [];
+                const maxHeight = Math.max(...roundCenters, 0) + 40;
+                return (
                   <div
+                    key={round}
                     style={{
                       position: "relative",
                       height: `${maxHeight}px`,
+                      width: "240px",
                     }}
                   >
                     {roundMatches.map((match, matchIndex) => (
@@ -657,26 +670,26 @@ const TournamentView = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Connectors (moved outside rounds, like TournamentBracket) */}
-            {Array.from({ length: rounds - 1 }, (_, connectorRound) => (
-              <div
-                key={`connector-${connectorRound}`}
-                style={{
-                  position: "absolute",
-                  left: `${(connectorRound + 1) * 240 + connectorRound * 60}px`,  // Precise positioning between rounds
-                  width: "60px",
-                  height: "100%",
-                  top: "50px",  // Adjusted for header height + margin (approx 30px header + 20px margin)
-                  pointerEvents: "none",
-                }}
-              >
-                {createConnectors(connectorRound, centers, rounds)}
-              </div>
-            ))}
+              {/* Connectors */}
+              {Array.from({ length: rounds - 1 }, (_, connectorRound) => (
+                <div
+                  key={`connector-${connectorRound}`}
+                  style={{
+                    position: "absolute",
+                    left: `${(connectorRound + 1) * 240 + connectorRound * 60}px`,
+                    width: "60px",
+                    height: "100%",
+                    top: "0px",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {createConnectors(connectorRound, centers, rounds)}
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <div
