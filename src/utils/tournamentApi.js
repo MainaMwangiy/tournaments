@@ -52,7 +52,7 @@ export const tournamentApi = {
 
   // Get tournament details
   getTournamentDetails: async (id) => {
-    const response = await apiClient.get(`${API_BASE_URL}/tournaments/details/${id}`);
+    const response = await axios.get(`${API_BASE_URL}/tournaments/details/${id}`);
     return response.data;
   },
 

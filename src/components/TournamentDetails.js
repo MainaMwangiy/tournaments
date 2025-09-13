@@ -35,12 +35,24 @@ const TournamentDetails = () => {
     fetchTournamentData()
   }, [id])
 
-  const handleGenerateLink = () => {
-    dispatch(generateTournamentUrl())
-    const shareUrl = `/bracket/${tournament?.id}`
-    navigator.clipboard.writeText(window.location.origin + shareUrl)
-    alert("Tournament link copied to clipboard!")
-  }
+  const handleGenerateLink = async () => {
+    try {
+      dispatch(generateTournamentUrl());
+      const shareUrl = `/bracket/${tournament?.id}`;
+      const fullUrl = window.location.origin + shareUrl;
+      await navigator.clipboard.writeText(fullUrl);
+      alert("Public tournament link copied to clipboard! Anyone can view it without logging in.");
+    } catch (err) {
+      console.error("Failed to copy link:", err);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = window.location.origin + `/bracket/${tournament?.id}`;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      alert("Public tournament link copied to clipboard!");
+    }
+  };
 
   const handleAddEntries = () => {
     navigate(`/player-entry/${tournament?.id}`)

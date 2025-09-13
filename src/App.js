@@ -9,7 +9,7 @@ import PlayerEntry from "./components/PlayerEntry.js";
 import TournamentBracket from "./components/TournamentBracket.js";
 import AdminLogin from "./components/AdminLogin.js";
 import TournamentView from "./components/TournamentView.js";
-import ProtectedRoute from "./components/ProtectedRoute.js"; // Import the new component
+import ProtectedRoute from "./components/ProtectedRoute.js";
 import "./App.css";
 
 function App() {
@@ -19,15 +19,17 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/admin-login" element={<AdminLogin />} />
+          
           <Route element={<ProtectedRoute />}>
             <Route path="/tournaments" element={<TournamentsList />} />
             <Route path="/tournament-details/:id" element={<TournamentDetails />} />
             <Route path="/create-tournament" element={<CreateTournament />} />
             <Route path="/player-entry/:id?" element={<PlayerEntry />} />
-            <Route path="/bracket/:id?" element={<TournamentBracket />} />
-            <Route path="/tournament/:id" element={<TournamentView />} />
             <Route path="/" element={<Navigate to="/tournaments" />} />
           </Route>
+          <Route path="/bracket/:id" element={
+            localStorage.getItem("user") ? <TournamentBracket /> : <TournamentView />
+          } />
         </Routes>
       </Router>
     </Provider>
