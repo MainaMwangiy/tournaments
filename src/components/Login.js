@@ -7,6 +7,7 @@ import { auth, googleProvider } from "../utils/firebase";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 import Cookies from "js-cookie";
+import { API_BASE_URL } from "../utils/tournamentApi";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -51,7 +52,7 @@ const Login = () => {
         provider: "google",
       };
 
-      const response = await axios.post("http://localhost:5000/api/v1/auth/sso", userData);
+      const response = await axios.post(`${API_BASE_URL}/auth/sso`, userData);
 
       if (response.data.success) {
         const { user: dbUser, token } = response.data;

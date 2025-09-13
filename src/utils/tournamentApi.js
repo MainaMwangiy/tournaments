@@ -3,12 +3,12 @@ import Cookies from 'js-cookie';
 
 const baseURL = process.env.NODE_ENV === 'production' ? process.env.REACT_APP_PROD_BACKEND_URL : process.env.REACT_APP_DEV_BACKEND_URL;
 
-const API_BASE_URL =  `${baseURL}/api/v1`;
+export const API_BASE_URL =  `${baseURL}/api/v1`;
 
 // Create axios instance with default config
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  headers: { Authorization: `Bearer ${localStorage.getItem("rabbit_farm_token")}` },
+  headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
 })
 
 // Request interceptor to add auth token
@@ -36,7 +36,7 @@ apiClient.interceptors.response.use(
 )
 
 const getToken = () => {
-  return Cookies.get("token") || localStorage.getItem("rabbit_farm_token")
+  return Cookies.get("token") || localStorage.getItem("token")
 }
 
 export const tournamentApi = {
