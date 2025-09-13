@@ -140,13 +140,6 @@ const TournamentBracket = () => {
       if (newBracket.length === 0) return;
       setBracket(newBracket)
       dispatch(updateBracket(newBracket))
-
-      // if (id) {
-      //   await tournamentApi.saveBracket(id, {
-      //     bracket: newBracket,
-      //     players: effectivePlayers,
-      //   })
-      // }
     } catch (err) {
       console.error("Error updating bracket:", err)
       setError("Failed to update bracket")
@@ -173,8 +166,7 @@ const TournamentBracket = () => {
           score2: Number.parseInt(score2) || 0,
         }
 
-        // Update local state
-        const updatedBracket = [...bracket]
+        const updatedBracket = JSON.parse(JSON.stringify(bracket))
         updatedBracket[editingMatch.round][editingMatch.matchIndex] = {
           ...updatedBracket[editingMatch.round][editingMatch.matchIndex],
           score1: matchData.score1,
@@ -185,6 +177,11 @@ const TournamentBracket = () => {
         dispatch(updateMatchResult(matchData))
 
         if (id) {
+          // Ensure bracket is saved before updating match result
+          await tournamentApi.saveBracket(id, {
+            bracket: updatedBracket,
+            players: effectivePlayers,
+          })
           await tournamentApi.updateMatchResult(id, matchData)
         }
 
@@ -207,6 +204,11 @@ const TournamentBracket = () => {
 
       // Start tournament on backend
       if (id) {
+        // Save bracket before starting tournament
+        await tournamentApi.saveBracket(id, {
+          bracket,
+          players: effectivePlayers,
+        })
         await tournamentApi.startTournament(id)
         const urlData = await tournamentApi.generateTournamentUrl(id)
 
@@ -355,10 +357,10 @@ const TournamentBracket = () => {
         <div className="controls">
           {isLoggedIn && (
             <button className="return-btn" onClick={() => navigate(`/tournament-details/${id}`)}>
-              Return asdDadwD
+              Return
             </button>
           )}
-          <h2>Tournament Bracket fasdasf</h2>
+          <h2>Tournament Bracket</h2>
 
           {error && (
             <div
