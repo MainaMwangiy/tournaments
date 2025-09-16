@@ -55,13 +55,13 @@ const TournamentBracket = () => {
       }
 
       const bracketData = await tournamentApi.getTournamentBracket(id)
-      if (bracketData.bracket) {
-        setBracket(bracketData.bracket)
-        dispatch(updateBracket(bracketData.bracket))
+      if (bracketData?.data.bracket) {
+        setBracket(bracketData?.data.bracket)
+        dispatch(updateBracket(bracketData?.data.bracket))
       }
 
       console.log("[v0] Loaded tournament details:", details)
-      console.log("[v0] Loaded bracket:", bracketData.bracket)
+      console.log("[v0] Loaded bracket:", bracketData?.data.bracket)
     } catch (err) {
       setError("Failed to fetch tournament data")
       console.error("Error fetching tournament data:", err)
@@ -179,7 +179,7 @@ const TournamentBracket = () => {
         if (id) {
           // Ensure bracket is saved before updating match result
           await tournamentApi.saveBracket(id, {
-            bracket: updatedBracket,
+            bracket,
             players: effectivePlayers,
           })
           await tournamentApi.updateMatchResult(id, matchData)
