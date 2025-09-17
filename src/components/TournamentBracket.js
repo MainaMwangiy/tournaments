@@ -29,6 +29,39 @@ const TournamentBracket = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
+  const getWinner = (match) => {
+    if (match.score1 > match.score2) {
+      return match.player1
+    } else if (match.score2 > match.score1) {
+      return match.player2
+    } else if (match.score1 === 0 && match.score2 === 0) {
+      return { name: "TBD", seed: 0 }
+    } else {
+      return { name: "TIE", seed: 0 }
+    }
+  }
+
+  const propagateWinners = (currentBracket) => {
+    if (!currentBracket || currentBracket.length < 2) {
+      return currentBracket
+    }
+    const newBracket = JSON.parse(JSON.stringify(currentBracket))
+    const numRounds = newBracket.length
+    for (let r = 0; r < numRounds - 1; r++) {
+      const currentRound = newBracket[r]
+      const nextRound = newBracket[r + 1]
+      for (let pair = 0; pair < currentRound.length / 2; pair++) {
+        const match1Index = 2 * pair
+        const match2Index = 2 * pair + 1
+        const winner1 = getWinner(currentRound[match1Index])
+        const winner2 = getWinner(currentRound[match2Index])
+        nextRound[pair].player1 = winner1
+        nextRound[pair].player2 = winner2
+      }
+    }
+    return newBracket
+  }
+
   // Fetch tournament data on component mount
   useEffect(() => {
     if (id) {
@@ -56,8 +89,9 @@ const TournamentBracket = () => {
 
       const bracketData = await tournamentApi.getTournamentBracket(id)
       if (bracketData?.data.bracket) {
-        setBracket(bracketData?.data.bracket)
-        dispatch(updateBracket(bracketData?.data.bracket))
+        const propagatedBracket = propagateWinners(bracketData.data.bracket)
+        setBracket(propagatedBracket)
+        dispatch(updateBracket(propagatedBracket))
       }
 
       console.log("[v0] Loaded tournament details:", details)
@@ -138,8 +172,9 @@ const TournamentBracket = () => {
     try {
       const newBracket = createBracketStructure(effectivePlayers)
       if (newBracket.length === 0) return;
-      setBracket(newBracket)
-      dispatch(updateBracket(newBracket))
+      const propagatedBracket = propagateWinners(newBracket)
+      setBracket(propagatedBracket)
+      dispatch(updateBracket(propagatedBracket))
     } catch (err) {
       console.error("Error updating bracket:", err)
       setError("Failed to update bracket")
@@ -172,14 +207,16 @@ const TournamentBracket = () => {
           score1: matchData.score1,
           score2: matchData.score2,
         }
-        setBracket(updatedBracket)
+
+        const propagatedBracket = propagateWinners(updatedBracket)
+        setBracket(propagatedBracket)
 
         dispatch(updateMatchResult(matchData))
 
         if (id) {
-          // Ensure bracket is saved before updating match result
+          // Save the full propagated bracket
           await tournamentApi.saveBracket(id, {
-            bracket,
+            bracket: propagatedBracket,
             players: effectivePlayers,
           })
           await tournamentApi.updateMatchResult(id, matchData)
@@ -188,6 +225,18 @@ const TournamentBracket = () => {
         setEditingMatch(null)
         setScore1("")
         setScore2("")
+
+        // Check if this was the final match
+        const finalRound = bracket.length - 1
+        if (editingMatch.round === finalRound && matchData.score1 > 0 && matchData.score2 >= 0) {
+          const finalMatch = propagatedBracket[finalRound][0]
+          const winnerName = getWinner(finalMatch).name
+          if (winnerName !== "TBD" && winnerName !== "TIE" && winnerName !== "BYE") {
+            alert(`Congratulations! The tournament winner is: ${winnerName}`)
+            setStatus("ended")
+            await tournamentApi.endTournament(id);
+          }
+        }
       } catch (err) {
         console.error("Error updating match result:", err)
         setError("Failed to update match result")
