@@ -74,9 +74,9 @@ const TournamentBracket = () => {
       setLoading(true)
       setError(null)
       const details = await tournamentApi.getTournamentDetails(id)
+      let effectiveStatus = details.status || "pending"
       setTournament(details)
       dispatch(selectTournament(details))
-      setStatus(details.status || "pending")
 
       if (details.data?.entries) {
         const mappedPlayers = details.data.entries.map((entry) => ({
@@ -92,7 +92,18 @@ const TournamentBracket = () => {
         const propagatedBracket = propagateWinners(bracketData.data.bracket)
         setBracket(propagatedBracket)
         dispatch(updateBracket(propagatedBracket))
+
+        // Check if tournament is completed based on final match
+        const finalRound = propagatedBracket.length - 1
+        if (finalRound >= 0) {
+          const finalMatch = propagatedBracket[finalRound][0]
+          if (finalMatch.score1 > 0 && finalMatch.score2 >= 0 && finalMatch.score1 !== finalMatch.score2) {
+            effectiveStatus = "completed"
+          }
+        }
       }
+
+      setStatus(effectiveStatus)
 
       console.log("[v0] Loaded tournament details:", details)
       console.log("[v0] Loaded bracket:", bracketData?.data.bracket)
@@ -228,13 +239,13 @@ const TournamentBracket = () => {
 
         // Check if this was the final match
         const finalRound = bracket.length - 1
-        if (editingMatch.round === finalRound && matchData.score1 > 0 && matchData.score2 >= 0) {
+        if (editingMatch.round === finalRound && matchData.score1 > 0 && matchData.score2 >= 0 && matchData.score1 !== matchData.score2) {
           const finalMatch = propagatedBracket[finalRound][0]
           const winnerName = getWinner(finalMatch).name
           if (winnerName !== "TBD" && winnerName !== "TIE" && winnerName !== "BYE") {
             alert(`Congratulations! The tournament winner is: ${winnerName}`)
             setStatus("ended")
-            await tournamentApi.endTournament(id);
+            // Optionally: await tournamentApi.endTournament(id);
           }
         }
       } catch (err) {

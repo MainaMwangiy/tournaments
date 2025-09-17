@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { tournamentApi } from "../utils/tournamentApi"
@@ -14,7 +13,44 @@ const TournamentView = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Fetch tournament data on component mount (mirrors TournamentBracket)
+  const getWinner = (match) => {
+    if (!match || !match.player1 || !match.player2) {
+      return { name: "TBD", seed: 0 }
+    }
+    if (match.score1 > match.score2) {
+      return match.player1
+    } else if (match.score2 > match.score1) {
+      return match.player2
+    } else if (match.score1 === 0 && match.score2 === 0) {
+      return { name: "TBD", seed: 0 }
+    } else {
+      // Handle tie as TBD for progression
+      return { name: "TIE", seed: 0 }
+    }
+  }
+
+  const propagateWinners = (currentBracket) => {
+    if (!currentBracket || currentBracket.length < 2) {
+      return currentBracket || []
+    }
+    const newBracket = JSON.parse(JSON.stringify(currentBracket))
+    const numRounds = newBracket.length
+    for (let r = 0; r < numRounds - 1; r++) {
+      const currentRound = newBracket[r]
+      const nextRound = newBracket[r + 1]
+      for (let pair = 0; pair < currentRound.length / 2; pair++) {
+        const match1Index = 2 * pair
+        const match2Index = 2 * pair + 1
+        const winner1 = getWinner(currentRound[match1Index])
+        const winner2 = match2Index < currentRound.length ? getWinner(currentRound[match2Index]) : { name: "TBD", seed: 0 }
+        nextRound[pair].player1 = winner1
+        nextRound[pair].player2 = winner2
+      }
+    }
+    return newBracket
+  }
+
+  // Fetch tournament data on component mount
   useEffect(() => {
     if (id) {
       fetchTournamentData()
@@ -26,7 +62,7 @@ const TournamentView = () => {
       setLoading(true)
       setError(null)
       const details = await tournamentApi.getTournamentDetails(id)
-      setStatus(details.status || "pending")
+      let effectiveStatus = details.data?.status || details.status || "pending"
 
       if (details.data?.entries) {
         const mappedPlayers = details.data.entries.map((entry) => ({
@@ -35,15 +71,31 @@ const TournamentView = () => {
           seed: entry.seed_number || 0,
         }))
         setPlayers(mappedPlayers)
+      } else {
+        setPlayers([])
       }
 
       const bracketData = await tournamentApi.getTournamentBracket(id)
-      if (bracketData.bracket) {
-        setBracket(bracketData.bracket)
+      if (bracketData?.data?.bracket) {
+        const propagatedBracket = propagateWinners(bracketData.data.bracket)
+        setBracket(propagatedBracket)
+
+        // Check if tournament is ended based on final match
+        const finalRound = propagatedBracket.length - 1
+        if (finalRound >= 0) {
+          const finalMatch = propagatedBracket[finalRound][0]
+          if (finalMatch.score1 > 0 && finalMatch.score2 >= 0 && finalMatch.score1 !== finalMatch.score2) {
+            effectiveStatus = "ended"
+          }
+        }
+      } else {
+        setBracket([])
       }
 
+      setStatus(effectiveStatus)
+
       console.log("[Public View] Loaded tournament details:", details)
-      console.log("[Public View] Loaded bracket:", bracketData.bracket)
+      console.log("[Public View] Loaded bracket:", bracketData?.data?.bracket)
     } catch (err) {
       setError("Failed to fetch tournament data")
       console.error("Error fetching tournament data:", err)
@@ -52,7 +104,7 @@ const TournamentView = () => {
     }
   }
 
-  // Copy from TournamentBracket: Generate bracket if needed
+  // Generate bracket if needed
   const effectivePlayers = players.length > 0 ? players : []
   const playerCount = effectivePlayers.length > 0 ? effectivePlayers.length : bracket[0]?.length ? bracket[0].length * 2 : 0
   const isValidPlayerCount = playerCount > 0 && Number.isInteger(Math.log2(playerCount))
@@ -84,20 +136,10 @@ const TournamentView = () => {
       for (let i = 0; i < currentRound.length; i += 2) {
         const match1 = currentRound[i]
         const match2 = currentRound[i + 1] || null
-        const winner1 =
-          match1.score1 > match1.score2
-            ? match1.player1
-            : match1.score1 === 0 && match1.score2 === 0
-              ? { name: "TBD", seed: 0 }
-              : match1.player2
+        const winner1 = getWinner(match1)
         let winner2 = { name: "TBD", seed: 0 }
         if (match2) {
-          winner2 =
-            match2.score1 > match2.score2
-              ? match2.player1
-              : match2.score1 === 0 && match2.score2 === 0
-                ? { name: "TBD", seed: 0 }
-                : match2.player2
+          winner2 = getWinner(match2)
         }
         nextRound.push({
           player1: winner1,
@@ -117,21 +159,22 @@ const TournamentView = () => {
     try {
       const newBracket = createBracketStructure(effectivePlayers)
       if (newBracket.length === 0) return;
-      setBracket(newBracket)
+      const propagatedBracket = propagateWinners(newBracket);
+      setBracket(propagatedBracket);
     } catch (err) {
       console.error("Error generating bracket:", err)
       setError("Failed to generate bracket")
     }
   }
 
-  // Auto-generate if no bracket but valid players (copy from TournamentBracket)
+  // Auto-generate bracket if no bracket exists but valid players are available
   useEffect(() => {
     if (effectivePlayers.length >= 4 && bracket.length === 0 && isValidPlayerCount) {
       generateBracket()
     }
   }, [effectivePlayers, bracket, isValidPlayerCount])
 
-  // Copy getCenters from TournamentBracket (public version doesn't need auth checks)
+  // Calculate centers for bracket layout
   const getCenters = () => {
     if (!bracket || !Array.isArray(bracket) || bracket.length === 0 || !isValidPlayerCount) {
       return [];
@@ -162,7 +205,7 @@ const TournamentView = () => {
     return centers;
   };
 
-  // Copy createConnectors from TournamentBracket (adjusted for inline styles to match)
+  // Create connectors between matches
   const createConnectors = (round, centers, totalRounds) => {
     const connectorElements = []
     const matchCount = centers[round]?.length || 0;
@@ -241,19 +284,23 @@ const TournamentView = () => {
     return connectorElements
   }
 
-  const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0;
+  const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0
   const centers = getCenters()
 
   // Get winner for ended tournament
-  const getWinner = () => {
-    if (status === "ended" && bracket && bracket.length > 0) {
+  const getTournamentWinner = () => {
+    if (bracket && bracket.length > 0) {
       const finalMatch = bracket[bracket.length - 1][0]
-      return finalMatch.score1 > finalMatch.score2 ? finalMatch.player1.name : finalMatch.player2.name
+      const winnerPlayer = getWinner(finalMatch)
+      if (winnerPlayer.name !== "TBD" && winnerPlayer.name !== "TIE" && winnerPlayer.name !== "BYE") {
+        return winnerPlayer.name
+      }
     }
     return null
   }
 
-  const winner = getWinner()
+  const winner = getTournamentWinner()
+  const hasWinner = !!winner
 
   // Loading state
   if (loading) {
@@ -425,10 +472,10 @@ const TournamentView = () => {
               }}
             >
               {playerCount} players •{" "}
-              {status === "in-progress"
-                ? "Live Tournament"
-                : status === "ended"
-                  ? "Tournament Complete"
+              {hasWinner
+                ? "Tournament Complete"
+                : status === "in-progress"
+                  ? "Live Tournament"
                   : "Tournament Status: " + status}
             </p>
           </div>
