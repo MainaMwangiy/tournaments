@@ -83,6 +83,8 @@ const PlayerEntry = () => {
     }
   }
 
+  const isPowerOfTwo = (n) => n > 0 && Number.isInteger(Math.log2(n));
+
   const handleNext = () => {
     navigate(`/bracket/${id || tournamentDetails?.data.id}`)
   }
@@ -98,6 +100,7 @@ const PlayerEntry = () => {
   }
 
   const isFormValid = name.trim() && !loading
+  const isReadyToProceed = players.length >= 4 && isPowerOfTwo(players.length);
 
   // ===== Styles =====
   const containerStyle = {
@@ -188,9 +191,9 @@ const PlayerEntry = () => {
 
   const nextBtnStyle = {
     ...buttonStyle,
-    background: players.length >= 4 ? "#111827" : "#d1d5db",
+    background: isReadyToProceed ? "#111827" : "#d1d5db",
     color: "white",
-    cursor: players.length >= 4 ? "pointer" : "not-allowed",
+    cursor: isReadyToProceed ? "pointer" : "not-allowed",
     marginLeft: "10px",
   }
 
@@ -297,8 +300,8 @@ const PlayerEntry = () => {
           <span>
             <strong>{players.length}</strong> players added
           </span>
-          <span style={{ color: players.length >= 4 ? "#059669" : "#dc2626" }}>
-            {players.length >= 4 ? "✓ Ready to proceed" : "Minimum 4 players required"}
+          <span style={{ color: isReadyToProceed ? "#059669" : "#dc2626" }}>
+            {isReadyToProceed ? "✓ Ready to proceed" : "Need power of 2 players (4,8,16,...) minimum 4"}
           </span>
         </div>
 
@@ -321,7 +324,7 @@ const PlayerEntry = () => {
               {loading ? "Adding..." : "➕ Add Player"}
             </button>
 
-            <button onClick={handleNext} disabled={players.length < 4} style={nextBtnStyle}>
+            <button onClick={handleNext} disabled={!isReadyToProceed} style={nextBtnStyle}>
               🏆 Next
             </button>
           </div>

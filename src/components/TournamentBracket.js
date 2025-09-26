@@ -29,39 +29,6 @@ const TournamentBracket = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const getWinner = (match) => {
-    if (match.score1 > match.score2) {
-      return match.player1
-    } else if (match.score2 > match.score1) {
-      return match.player2
-    } else if (match.score1 === 0 && match.score2 === 0) {
-      return { name: "TBD", seed: 0 }
-    } else {
-      return { name: "TIE", seed: 0 }
-    }
-  }
-
-  const propagateWinners = (currentBracket) => {
-    if (!currentBracket || currentBracket.length < 2) {
-      return currentBracket
-    }
-    const newBracket = JSON.parse(JSON.stringify(currentBracket))
-    const numRounds = newBracket.length
-    for (let r = 0; r < numRounds - 1; r++) {
-      const currentRound = newBracket[r]
-      const nextRound = newBracket[r + 1]
-      for (let pair = 0; pair < currentRound.length / 2; pair++) {
-        const match1Index = 2 * pair
-        const match2Index = 2 * pair + 1
-        const winner1 = getWinner(currentRound[match1Index])
-        const winner2 = getWinner(currentRound[match2Index])
-        nextRound[pair].player1 = winner1
-        nextRound[pair].player2 = winner2
-      }
-    }
-    return newBracket
-  }
-
   // Fetch tournament data on component mount
   useEffect(() => {
     if (id) {
@@ -71,49 +38,72 @@ const TournamentBracket = () => {
 
   const fetchTournamentData = async () => {
     try {
-      setLoading(true)
-      setError(null)
-      const details = await tournamentApi.getTournamentDetails(id)
-      let effectiveStatus = details.status || "pending"
-      setTournament(details)
-      dispatch(selectTournament(details))
+      setLoading(true);
+      setError(null);
+      const details = await tournamentApi.getTournamentDetails(id);
+      setTournament(details);
+      dispatch(selectTournament(details));
+      setStatus(details.status || "pending");
 
       if (details.data?.entries) {
         const mappedPlayers = details.data.entries.map((entry) => ({
           id: entry.id,
           name: entry.player_name,
           seed: entry.seed_number || 0,
-        }))
-        setPlayers(mappedPlayers)
+        }));
+        setPlayers(mappedPlayers);
       }
 
-      const bracketData = await tournamentApi.getTournamentBracket(id)
-      if (bracketData?.data.bracket) {
-        const propagatedBracket = propagateWinners(bracketData.data.bracket)
-        setBracket(propagatedBracket)
-        dispatch(updateBracket(propagatedBracket))
+      const bracketData = await tournamentApi.getTournamentBracket(id);
 
-        // Check if tournament is completed based on final match
-        const finalRound = propagatedBracket.length - 1
-        if (finalRound >= 0) {
-          const finalMatch = propagatedBracket[finalRound][0]
-          if (finalMatch.score1 > 0 && finalMatch.score2 >= 0 && finalMatch.score1 !== finalMatch.score2) {
-            effectiveStatus = "completed"
+      const effectivePlayersLocal = details?.data?.entries?.map((entry) => ({
+        id: entry.id,
+        name: entry.player_name,
+        seed: entry.seed_number || 0,
+      })) || [];
+      const playerCountLocal = effectivePlayersLocal.length;
+      const numRounds = Number.isInteger(Math.log2(playerCountLocal)) ? Math.log2(playerCountLocal) : 0;
+
+      let initialBracket = bracketData?.data.bracket || null;
+      if (initialBracket) {
+        const expectedFirstRoundMatches = playerCountLocal / 2;
+        if (initialBracket[0]?.length !== expectedFirstRoundMatches) {
+          initialBracket = null;
+        } else if (initialBracket.length < numRounds) {
+          const fullBracket = createBracketStructure(effectivePlayersLocal);
+          for (let r = 0; r < initialBracket.length; r++) {
+            for (let m = 0; m < initialBracket[r].length; m++) {
+              fullBracket[r][m].score1 = initialBracket[r][m].score1;
+              fullBracket[r][m].score2 = initialBracket[r][m].score2;
+            }
           }
+          initialBracket = fullBracket;
         }
       }
 
-      setStatus(effectiveStatus)
+      if (initialBracket) {
+        const propagatedBracket = propagateWinners(initialBracket);
+        setBracket(propagatedBracket);
+        dispatch(updateBracket(propagatedBracket));
+      } else if (playerCountLocal >= 4 && Number.isInteger(Math.log2(playerCountLocal))) {
+        // Generate if no valid bracket was loaded and player count is valid
+        const newBracket = createBracketStructure(effectivePlayersLocal);
+        if (newBracket.length > 0) {
+          const propagatedBracket = propagateWinners(newBracket);
+          setBracket(propagatedBracket);
+          dispatch(updateBracket(propagatedBracket));
+        }
+      }
 
-      console.log("[v0] Loaded tournament details:", details)
-      console.log("[v0] Loaded bracket:", bracketData?.data.bracket)
+      console.log("[v0] Loaded tournament details:", details);
+      console.log("[v0] Loaded bracket:", bracketData?.data.bracket);
     } catch (err) {
-      setError("Failed to fetch tournament data")
-      console.error("Error fetching tournament data:", err)
+      setError("Failed to fetch tournament data");
+      console.error("Error fetching tournament data:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const effectivePlayers = players.length > 0 ? players : tournament?.data?.entries?.map((entry) => ({
     id: entry.id,
@@ -122,6 +112,49 @@ const TournamentBracket = () => {
   })) || []
   const playerCount = effectivePlayers.length > 0 ? effectivePlayers.length : bracket[0]?.length ? bracket[0].length * 2 : 0
   const isValidPlayerCount = playerCount > 0 && Number.isInteger(Math.log2(playerCount))
+
+  useEffect(() => {
+    if (playerCount >= 4 && bracket.length === 0 && isValidPlayerCount) {
+      generateBracket()
+    }
+  }, [])
+
+  const generateBracket = () => {
+    const newBracket = createBracketStructure(effectivePlayers)
+    if (newBracket.length === 0) return
+    const propagatedBracket = propagateWinners(newBracket)
+    setBracket(propagatedBracket)
+    dispatch(updateBracket(propagatedBracket))
+  }
+
+  const getWinner = (match) => {
+    if (match.score1 > match.score2) {
+      return match.player1
+    } else if (match.score1 < match.score2) {
+      return match.player2
+    } else {
+      return { name: "TBD", seed: 0 }
+    }
+  }
+
+  const propagateWinners = (currentBracket) => {
+    if (!currentBracket || currentBracket.length === 0) return currentBracket
+
+    const updatedBracket = JSON.parse(JSON.stringify(currentBracket))
+    for (let r = 0; r < updatedBracket.length - 1; r++) {
+      const currentRound = updatedBracket[r]
+      const nextRound = updatedBracket[r + 1]
+      for (let m = 0; m < nextRound.length; m++) {
+        const match1 = currentRound[2 * m]
+        const match2 = currentRound[2 * m + 1] || null
+        const winner1 = getWinner(match1) || { name: "TBD", seed: 0 }
+        const winner2 = match2 ? getWinner(match2) || { name: "TBD", seed: 0 } : { name: "BYE", seed: 0 }
+        nextRound[m].player1 = winner1
+        nextRound[m].player2 = winner2
+      }
+    }
+    return updatedBracket
+  }
 
   const createBracketStructure = (players) => {
     if (!players || players.length < 2 || !Number.isInteger(Math.log2(players.length))) {
@@ -179,19 +212,6 @@ const TournamentBracket = () => {
     return bracket
   }
 
-  const generateBracket = async () => {
-    try {
-      const newBracket = createBracketStructure(effectivePlayers)
-      if (newBracket.length === 0) return;
-      const propagatedBracket = propagateWinners(newBracket)
-      setBracket(propagatedBracket)
-      dispatch(updateBracket(propagatedBracket))
-    } catch (err) {
-      console.error("Error updating bracket:", err)
-      setError("Failed to update bracket")
-    }
-  }
-
   const handleEditResult = (round, matchIndex) => {
     if (!isLoggedIn) return
     setEditingMatch({ round, matchIndex })
@@ -219,15 +239,14 @@ const TournamentBracket = () => {
           score2: matchData.score2,
         }
 
-        const propagatedBracket = propagateWinners(updatedBracket)
-        setBracket(propagatedBracket)
+        const finalBracket = propagateWinners(updatedBracket)
+        setBracket(finalBracket)
 
-        dispatch(updateMatchResult(matchData))
+        dispatch(updateBracket(finalBracket))
 
         if (id) {
-          // Save the full propagated bracket
           await tournamentApi.saveBracket(id, {
-            bracket: propagatedBracket,
+            bracket: finalBracket,
             players: effectivePlayers,
           })
           await tournamentApi.updateMatchResult(id, matchData)
@@ -236,18 +255,6 @@ const TournamentBracket = () => {
         setEditingMatch(null)
         setScore1("")
         setScore2("")
-
-        // Check if this was the final match
-        const finalRound = bracket.length - 1
-        if (editingMatch.round === finalRound && matchData.score1 > 0 && matchData.score2 >= 0 && matchData.score1 !== matchData.score2) {
-          const finalMatch = propagatedBracket[finalRound][0]
-          const winnerName = getWinner(finalMatch).name
-          if (winnerName !== "TBD" && winnerName !== "TIE" && winnerName !== "BYE") {
-            alert(`Congratulations! The tournament winner is: ${winnerName}`)
-            setStatus("ended")
-            // Optionally: await tournamentApi.endTournament(id);
-          }
-        }
       } catch (err) {
         console.error("Error updating match result:", err)
         setError("Failed to update match result")
@@ -262,9 +269,7 @@ const TournamentBracket = () => {
       setLoading(true)
       setError(null)
 
-      // Start tournament on backend
       if (id) {
-        // Save bracket before starting tournament
         await tournamentApi.saveBracket(id, {
           bracket,
           players: effectivePlayers,
@@ -272,7 +277,6 @@ const TournamentBracket = () => {
         await tournamentApi.startTournament(id)
         const urlData = await tournamentApi.generateTournamentUrl(id)
 
-        // Update local state
         setStatus("in-progress")
         setShareUrl(urlData.shareUrl || `/bracket/${id}`)
 
@@ -288,7 +292,6 @@ const TournamentBracket = () => {
   }
 
   const getCenters = () => {
-    // Return an empty array if bracket is invalid or playerCount is invalid
     if (!bracket || !Array.isArray(bracket) || bracket.length === 0 || !isValidPlayerCount) {
       return [];
     }
@@ -298,12 +301,10 @@ const TournamentBracket = () => {
     const baseInterval = 160;
     const firstMatches = bracket[0]?.length || 0;
 
-    // Populate centers for the first round
     for (let j = 0; j < firstMatches; j++) {
       centers[0][j] = 40 + j * baseInterval;
     }
 
-    // Populate centers for subsequent rounds
     for (let r = 1; r < rounds; r++) {
       const numMatches = bracket[r]?.length || 0;
       for (let k = 0; k < numMatches; k++) {
@@ -345,7 +346,7 @@ const TournamentBracket = () => {
             left: "0px",
             top: `${match1Center + 19}px`,
           }}
-        />,
+        />
       )
 
       if (hasMatch2) {
@@ -358,7 +359,7 @@ const TournamentBracket = () => {
               left: "0px",
               top: `${match2Center + 19}px`,
             }}
-          />,
+          />
         )
 
         connectorElements.push(
@@ -370,7 +371,7 @@ const TournamentBracket = () => {
               top: `${Math.min(match1Center, match2Center) + 19}px`,
               height: `${Math.abs(match2Center - match1Center) + 2}px`,
             }}
-          />,
+          />
         )
       }
 
@@ -383,18 +384,17 @@ const TournamentBracket = () => {
             left: "30px",
             top: `${connectionPoint + 19}px`,
           }}
-        />,
+        />
       )
     }
 
     return connectorElements
   }
 
-  useEffect(() => {
-    if (effectivePlayers.length >= 4 && bracket.length === 0 && isValidPlayerCount) {
-      generateBracket()
-    }
-  }, [effectivePlayers, bracket, isValidPlayerCount])
+  const getRoundName = (roundIndex, totalRounds) => {
+    const reverseNames = ['Final', 'Semi-Final', 'Quarter-Final', 'Round of 16', 'Round of 32', 'Round of 64'];
+    return reverseNames[totalRounds - roundIndex - 1] || `Round ${roundIndex + 1}`;
+  }
 
   const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0;
   const centers = getCenters()
@@ -417,10 +417,13 @@ const TournamentBracket = () => {
         <div className="controls">
           {isLoggedIn && (
             <button className="return-btn" onClick={() => navigate(`/tournament-details/${id}`)}>
-              Return
+              &larr; Back
             </button>
           )}
           <h2>Tournament Bracket</h2>
+          <div style={{ textAlign: "center", color: "#666", marginBottom: "10px" }}>
+            {playerCount} players - Tournament Status: {status}
+          </div>
 
           {error && (
             <div
@@ -529,147 +532,174 @@ const TournamentBracket = () => {
         )}
 
         {bracket.length > 0 && isValidPlayerCount && (
-          <div
-            className="bracket"
-            style={{
-              display: "flex",
-              gap: "60px",
-              alignItems: "flex-start",
-              position: "relative",
-              overflowX: "auto",
-              padding: "20px",
-            }}
-          >
-            {bracket.map((roundMatches, round) => {
-              const roundCenters = centers[round] || [];
-              return (
+          <>
+            <div
+              className="round-headers"
+              style={{
+                display: "flex",
+                gap: "60px",
+                padding: "20px 20px 0",
+                justifyContent: "flex-start",
+              }}
+            >
+              {Array.from({ length: rounds }).map((_, round) => (
                 <div
                   key={round}
-                  className="round"
                   style={{
-                    height: `${Math.max(...roundCenters, 0) + 40}px`,
-                    position: "relative",
                     width: "240px",
+                    textAlign: "center",
+                    background: "#ccc",
+                    padding: "5px",
+                    borderRadius: "4px",
+                    color: "#666",
                   }}
                 >
-                  {roundMatches.map((match, matchIndex) => (
-                    <div
-                      key={`${round}-${matchIndex}`}
-                      className="match"
-                      style={{
-                        top: `${(roundCenters[matchIndex] ?? 40) - 40}px`,
-                        position: "absolute",
-                        width: "240px",
-                        border: "1px solid #ddd",
-                        borderRadius: "8px",
-                        background: "white",
-                        overflow: "hidden",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                        height: "80px",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                        left: 0,
-                        margin: 0,
-                        boxSizing: "border-box",
-                        cursor: isLoggedIn ? "pointer" : "default",
-                      }}
-                      onClick={() => isLoggedIn && handleEditResult(round, matchIndex)}
-                    >
-                      <div
-                        className="player"
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "6px 8px",
-                          fontSize: "14px",
-                        }}
-                      >
-                        <span style={{ color: "#111827", fontWeight: "500" }}>
-                          {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
-                          {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
-                            <span style={{ color: "#6b7280", fontSize: "13px" }}>
-                              ({match.player1.seed})
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className="score"
-                          style={{
-                            background: "#dbeafe",
-                            color: "#1d4ed8",
-                            borderRadius: "6px",
-                            width: "24px",
-                            height: "22px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "13px",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {match.score1}
-                        </span>
-                      </div>
-                      <div
-                        className="player"
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "6px 8px",
-                          fontSize: "14px",
-                          borderTop: "1px solid #ddd",
-                        }}
-                      >
-                        <span style={{ color: "#111827", fontWeight: "500" }}>
-                          {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
-                          {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
-                            <span style={{ color: "#6b7280", fontSize: "13px" }}>
-                              ({match.player2.seed})
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className="score"
-                          style={{
-                            background: "#dbeafe",
-                            color: "#1d4ed8",
-                            borderRadius: "6px",
-                            width: "24px",
-                            height: "22px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "13px",
-                            fontWeight: "bold",
-                          }}
-                        >
-                          {match.score2}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                  {getRoundName(round, rounds)}
                 </div>
-              );
-            })}
-            {Array.from({ length: rounds - 1 }, (_, round) => (
-              <div
-                key={`connector-${round}`}
-                style={{
-                  position: "absolute",
-                  left: `${(round + 1) * 240 + round * 60 + 20}px`,
-                  width: "60px",
-                  height: "100%",
-                  top: "0px",
-                  pointerEvents: "none",
-                }}
-              >
-                {createConnectors(round, centers, rounds)}
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+            <div
+              className="bracket"
+              style={{
+                display: "flex",
+                gap: "60px",
+                alignItems: "flex-start",
+                position: "relative",
+                overflowX: "auto",
+                padding: "20px",
+              }}
+            >
+              {bracket.map((roundMatches, round) => {
+                const roundCenters = centers[round] || [];
+                return (
+                  <div
+                    key={round}
+                    className="round"
+                    style={{
+                      height: `${Math.max(...roundCenters, 0) + 40}px`,
+                      position: "relative",
+                      width: "240px",
+                    }}
+                  >
+                    {roundMatches.map((match, matchIndex) => (
+                      <div
+                        key={`${round}-${matchIndex}`}
+                        className="match"
+                        style={{
+                          top: `${(roundCenters[matchIndex] ?? 40) - 40}px`,
+                          position: "absolute",
+                          width: "240px",
+                          border: "1px solid #ddd",
+                          borderRadius: "8px",
+                          background: "white",
+                          overflow: "hidden",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                          height: "80px",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          left: 0,
+                          margin: 0,
+                          boxSizing: "border-box",
+                          cursor: isLoggedIn ? "pointer" : "default",
+                        }}
+                        onClick={() => isLoggedIn && handleEditResult(round, matchIndex)}
+                      >
+                        <div
+                          className="player"
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "6px 8px",
+                            fontSize: "14px",
+                          }}
+                        >
+                          <span style={{ color: "#111827", fontWeight: "500" }}>
+                            {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
+                            {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
+                              <span style={{ color: "#6b7280", fontSize: "13px" }}>
+                                ({match.player1.seed})
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className="score"
+                            style={{
+                              background: "#dbeafe",
+                              color: "#1d4ed8",
+                              borderRadius: "6px",
+                              width: "24px",
+                              height: "22px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "13px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {match.score1}
+                          </span>
+                        </div>
+                        <div
+                          className="player"
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "6px 8px",
+                            fontSize: "14px",
+                            borderTop: "1px solid #ddd",
+                          }}
+                        >
+                          <span style={{ color: "#111827", fontWeight: "500" }}>
+                            {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
+                            {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
+                              <span style={{ color: "#6b7280", fontSize: "13px" }}>
+                                ({match.player2.seed})
+                              </span>
+                            )}
+                          </span>
+                          <span
+                            className="score"
+                            style={{
+                              background: "#dbeafe",
+                              color: "#1d4ed8",
+                              borderRadius: "6px",
+                              width: "24px",
+                              height: "22px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "13px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {match.score2}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              {Array.from({ length: rounds - 1 }, (_, round) => (
+                <div
+                  key={`connector-${round}`}
+                  style={{
+                    position: "absolute",
+                    left: `${(round + 1) * 240 + round * 60}px`,
+                    width: "60px",
+                    height: "100%",
+                    top: "0px",
+                    pointerEvents: "none",
+                  }}
+                >
+                  {createConnectors(round, centers, rounds)}
+                </div>
+              ))}
+            </div>
+          </>
         )}
         {editingMatch && isLoggedIn && (
           <div
