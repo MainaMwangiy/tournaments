@@ -12,6 +12,29 @@ const TournamentView = () => {
   const [status, setStatus] = useState("pending")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  const roundWidth = isMobile ? 210 : 240
+  const gap = isMobile ? 30 : 60
+  const baseInterval = isMobile ? 100 : 160
+  const matchHeight = isMobile ? 60 : 80
+  const connectorHalf = gap / 2
+  const connectorOffset = isMobile ? 10 : 19
+  const initialOffset = isMobile ? 30 : 40
+  const playerPadding = isMobile ? "4px 6px" : "6px 8px"
+  const playerFontSize = isMobile ? "12px" : "14px"
+  const scoreSize = isMobile ? "20px" : "24px"
+  const scoreHeight = isMobile ? "18px" : "22px"
+  const containerPadding = isMobile ? "10px" : "20px"
+  const bracketPadding = 20
 
   const getWinner = (match) => {
     if (!match || !match.player1 || !match.player2) {
@@ -182,11 +205,10 @@ const TournamentView = () => {
 
     const rounds = Math.log2(playerCount);
     const centers = Array.from({ length: rounds }, () => []);
-    const baseInterval = 160;
     const firstMatches = bracket[0]?.length || 0;
 
     for (let j = 0; j < firstMatches; j++) {
-      centers[0][j] = 40 + j * baseInterval;
+      centers[0][j] = initialOffset + j * baseInterval;
     }
 
     for (let r = 1; r < rounds; r++) {
@@ -209,6 +231,7 @@ const TournamentView = () => {
   const createConnectors = (round, centers, totalRounds) => {
     const connectorElements = []
     const matchCount = centers[round]?.length || 0;
+    const vLeft = connectorHalf - 1;
 
     for (let i = 0; i < matchCount; i += 2) {
       const match1Index = i
@@ -227,11 +250,11 @@ const TournamentView = () => {
           key={`h1-${round}-${i}`}
           style={{
             position: "absolute",
-            width: "30px",
+            width: `${connectorHalf}px`,
             height: "2px",
             background: "#d1d5db",
             left: "0px",
-            top: `${match1Center - 1}px`,
+            top: `${match1Center + connectorOffset}px`,
           }}
         />,
       )
@@ -242,11 +265,11 @@ const TournamentView = () => {
             key={`h2-${round}-${i}`}
             style={{
               position: "absolute",
-              width: "30px",
+              width: `${connectorHalf}px`,
               height: "2px",
               background: "#d1d5db",
               left: "0px",
-              top: `${match2Center - 1}px`,
+              top: `${match2Center + connectorOffset}px`,
             }}
           />,
         )
@@ -258,8 +281,8 @@ const TournamentView = () => {
               position: "absolute",
               width: "2px",
               background: "#d1d5db",
-              left: "29px",
-              top: `${Math.min(match1Center, match2Center) - 1}px`,
+              left: `${vLeft}px`,
+              top: `${Math.min(match1Center, match2Center) + connectorOffset}px`,
               height: `${Math.abs(match2Center - match1Center) + 2}px`,
             }}
           />,
@@ -271,17 +294,22 @@ const TournamentView = () => {
           key={`hr-${round}-${i}`}
           style={{
             position: "absolute",
-            width: "30px",
+            width: `${connectorHalf}px`,
             height: "2px",
             background: "#d1d5db",
-            left: "30px",
-            top: `${connectionPoint - 1}px`,
+            left: `${connectorHalf}px`,
+            top: `${connectionPoint + connectorOffset}px`,
           }}
         />,
       )
     }
 
     return connectorElements
+  }
+
+  const getRoundName = (roundIndex, totalRounds) => {
+    const reverseNames = ['Final', 'Semi-Final', 'Quarter-Final', 'Round of 16', 'Round of 32', 'Round of 64'];
+    return reverseNames[totalRounds - roundIndex - 1] || `Round ${roundIndex + 1}`;
   }
 
   const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0
@@ -309,7 +337,7 @@ const TournamentView = () => {
         style={{
           minHeight: "100vh",
           background: "#f9fafb",
-          padding: "40px 20px",
+          padding: containerPadding,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -341,7 +369,7 @@ const TournamentView = () => {
         style={{
           minHeight: "100vh",
           background: "#f9fafb",
-          padding: "40px 20px",
+          padding: containerPadding,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -408,7 +436,7 @@ const TournamentView = () => {
         minHeight: "100vh",
         background: "#f9fafb",
         fontFamily: "Inter, sans-serif",
-        padding: "20px",
+        padding: containerPadding,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -428,7 +456,7 @@ const TournamentView = () => {
             justifyContent: "space-between",
             alignItems: "center",
             background: "white",
-            padding: "20px 30px",
+            padding: isMobile ? "10px 15px" : "20px 30px",
             borderRadius: "12px",
             boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
             border: "1px solid #e5e7eb",
@@ -437,8 +465,8 @@ const TournamentView = () => {
           <button
             onClick={() => window.history.back()}
             style={{
-              padding: "10px 16px",
-              fontSize: "14px",
+              padding: isMobile ? "8px 12px" : "10px 16px",
+              fontSize: isMobile ? "12px" : "14px",
               fontWeight: "600",
               border: "1px solid #d1d5db",
               borderRadius: "8px",
@@ -453,7 +481,7 @@ const TournamentView = () => {
           <div style={{ textAlign: "center" }}>
             <h1
               style={{
-                fontSize: "28px",
+                fontSize: isMobile ? "22px" : "28px",
                 fontWeight: "700",
                 color: "#111827",
                 margin: 0,
@@ -468,7 +496,7 @@ const TournamentView = () => {
               style={{
                 color: "#6b7280",
                 margin: "4px 0 0 0",
-                fontSize: "14px",
+                fontSize: isMobile ? "12px" : "14px",
               }}
             >
               {playerCount} players •{" "}
@@ -479,7 +507,7 @@ const TournamentView = () => {
                   : "Tournament Status: " + status}
             </p>
           </div>
-          <div style={{ width: "80px" }}></div> {/* Spacer for centering */}
+          <div style={{ width: isMobile ? "60px" : "80px" }}></div> {/* Spacer for centering */}
         </div>
 
         {/* Winner Banner */}
@@ -488,7 +516,7 @@ const TournamentView = () => {
             style={{
               background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
               color: "white",
-              padding: "20px 30px",
+              padding: isMobile ? "15px 20px" : "20px 30px",
               borderRadius: "12px",
               textAlign: "center",
               marginTop: "20px",
@@ -497,7 +525,7 @@ const TournamentView = () => {
           >
             <h2
               style={{
-                fontSize: "24px",
+                fontSize: isMobile ? "20px" : "24px",
                 fontWeight: "700",
                 margin: "0 0 8px 0",
                 display: "flex",
@@ -510,7 +538,7 @@ const TournamentView = () => {
             </h2>
             <p
               style={{
-                fontSize: "20px",
+                fontSize: isMobile ? "18px" : "20px",
                 fontWeight: "600",
                 margin: 0,
               }}
@@ -526,13 +554,15 @@ const TournamentView = () => {
         style={{
           maxWidth: "100%",
           overflowX: "auto",
-          overflowY: "visible",
+          overflowY: "auto",
           background: "white",
           borderRadius: "12px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
           border: "1px solid #e5e7eb",
-          padding: "20px",
+          padding: `${bracketPadding}px`,
           width: "fit-content",
+          touchAction: "pan-y pinch-zoom", // Enables pinch zoom on mobile while allowing vertical pan
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {bracket.length > 0 && isValidPlayerCount ? (
@@ -541,45 +571,33 @@ const TournamentView = () => {
               display: "flex",
               flexDirection: "column",
               alignItems: "flex-start",
+              width: "fit-content",
+              minWidth: "100%",
             }}
           >
             {/* Round Headers */}
             <div
               style={{
                 display: "flex",
-                gap: "60px",
+                gap: `${gap}px`,
                 marginBottom: "20px",
                 minWidth: "fit-content",
               }}
             >
-              {bracket.map((_, round) => (
+              {Array.from({ length: rounds }).map((_, round) => (
                 <div
-                  key={`header-${round}`}
+                  key={round}
                   style={{
-                    width: "240px",
+                    width: `${roundWidth}px`,
                     textAlign: "center",
-                    padding: "8px 16px",
-                    background: "#f3f4f6",
-                    borderRadius: "8px",
-                    border: "1px solid #e5e7eb",
+                    background: "#ccc",
+                    padding: "5px",
+                    borderRadius: "4px",
+                    color: "#666",
+                    flexShrink: 0,
                   }}
                 >
-                  <h3
-                    style={{
-                      margin: 0,
-                      fontSize: "14px",
-                      fontWeight: "600",
-                      color: "#374151",
-                    }}
-                  >
-                    {round === bracket.length - 1
-                      ? "Final"
-                      : round === bracket.length - 2
-                        ? "Semi-Final"
-                        : round === bracket.length - 3
-                          ? "Quarter-Final"
-                          : `Round ${round + 1}`}
-                  </h3>
+                  {getRoundName(round, rounds)}
                 </div>
               ))}
             </div>
@@ -588,7 +606,7 @@ const TournamentView = () => {
             <div
               style={{
                 display: "flex",
-                gap: "60px",
+                gap: `${gap}px`,
                 alignItems: "flex-start",
                 position: "relative",
                 minWidth: "fit-content",
@@ -596,29 +614,29 @@ const TournamentView = () => {
             >
               {bracket.map((roundMatches, round) => {
                 const roundCenters = centers[round] || [];
-                const maxHeight = Math.max(...roundCenters, 0) + 40;
+                const maxHeight = Math.max(...roundCenters, 0) + initialOffset;
                 return (
                   <div
                     key={round}
                     style={{
                       position: "relative",
                       height: `${maxHeight}px`,
-                      width: "240px",
+                      width: `${roundWidth}px`,
                     }}
                   >
                     {roundMatches.map((match, matchIndex) => (
                       <div
                         key={`${round}-${matchIndex}`}
                         style={{
-                          top: `${(roundCenters[matchIndex] ?? 40) - 40}px`,
+                          top: `${(roundCenters[matchIndex] ?? initialOffset) - initialOffset}px`,
                           position: "absolute",
-                          width: "240px",
+                          width: `${roundWidth}px`,
                           border: "1px solid #e5e7eb",
                           borderRadius: "8px",
                           background: "white",
                           overflow: "hidden",
                           boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                          height: "80px",
+                          height: `${matchHeight}px`,
                           display: "flex",
                           flexDirection: "column",
                           justifyContent: "space-between",
@@ -634,8 +652,8 @@ const TournamentView = () => {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            padding: "8px 12px",
-                            fontSize: "14px",
+                            padding: playerPadding,
+                            fontSize: playerFontSize,
                             background: match.score1 > match.score2 ? "#f0f9ff" : "white",
                           }}
                         >
@@ -644,11 +662,15 @@ const TournamentView = () => {
                               color: "#111827",
                               fontWeight: match.score1 > match.score2 ? "600" : "500",
                               flex: 1,
+                              minWidth: 0,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}
                           >
                             {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
                             {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
-                              <span style={{ color: "#6b7280", fontSize: "12px" }}>
+                              <span style={{ color: "#6b7280", fontSize: isMobile ? "11px" : "13px" }}>
                                 ({match.player1.seed})
                               </span>
                             )}
@@ -658,13 +680,13 @@ const TournamentView = () => {
                               background: match.score1 > match.score2 ? "#3b82f6" : "#dbeafe",
                               color: match.score1 > match.score2 ? "white" : "#1d4ed8",
                               borderRadius: "6px",
-                              width: "28px",
-                              height: "24px",
+                              width: scoreSize,
+                              height: scoreHeight,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: "13px",
-                              fontWeight: "700",
+                              fontSize: isMobile ? "11px" : "13px",
+                              fontWeight: "bold",
                             }}
                           >
                             {match.score1}
@@ -677,8 +699,8 @@ const TournamentView = () => {
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            padding: "8px 12px",
-                            fontSize: "14px",
+                            padding: playerPadding,
+                            fontSize: playerFontSize,
                             borderTop: "1px solid #f3f4f6",
                             background: match.score2 > match.score1 ? "#f0f9ff" : "white",
                           }}
@@ -688,11 +710,15 @@ const TournamentView = () => {
                               color: "#111827",
                               fontWeight: match.score2 > match.score1 ? "600" : "500",
                               flex: 1,
+                              minWidth: 0,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
                             }}
                           >
                             {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
                             {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
-                              <span style={{ color: "#6b7280", fontSize: "12px" }}>
+                              <span style={{ color: "#6b7280", fontSize: isMobile ? "11px" : "13px" }}>
                                 ({match.player2.seed})
                               </span>
                             )}
@@ -702,13 +728,13 @@ const TournamentView = () => {
                               background: match.score2 > match.score1 ? "#3b82f6" : "#dbeafe",
                               color: match.score2 > match.score1 ? "white" : "#1d4ed8",
                               borderRadius: "6px",
-                              width: "28px",
-                              height: "24px",
+                              width: scoreSize,
+                              height: scoreHeight,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: "13px",
-                              fontWeight: "700",
+                              fontSize: isMobile ? "11px" : "13px",
+                              fontWeight: "bold",
                             }}
                           >
                             {match.score2}
@@ -721,21 +747,26 @@ const TournamentView = () => {
               })}
 
               {/* Connectors */}
-              {Array.from({ length: rounds - 1 }, (_, connectorRound) => (
-                <div
-                  key={`connector-${connectorRound}`}
-                  style={{
-                    position: "absolute",
-                    left: `${(connectorRound + 1) * 240 + connectorRound * 60}px`,
-                    width: "60px",
-                    height: "100%",
-                    top: "0px",
-                    pointerEvents: "none",
-                  }}
-                >
-                  {createConnectors(connectorRound, centers, rounds)}
-                </div>
-              ))}
+              {Array.from({ length: rounds - 1 }, (_, connectorRound) => {
+                const adjustment = isMobile 
+                  ? -connectorRound * connectorOffset 
+                  : connectorOffset - (connectorRound > 0 ? 3 : 0);
+                return (
+                  <div
+                    key={`connector-${connectorRound}`}
+                    style={{
+                      position: "absolute",
+                      left: `${(connectorRound + 1) * roundWidth + connectorRound * gap + adjustment}px`,
+                      width: `${gap}px`,
+                      height: "100%",
+                      top: "0px",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {createConnectors(connectorRound, centers, rounds)}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
