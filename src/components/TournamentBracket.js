@@ -122,7 +122,7 @@ const TournamentBracket = () => {
       console.log("[v0] Loaded bracket:", bracketData?.data.bracket);
     } catch (err) {
       setError("Failed to fetch tournament data");
-      console.error("Error fetching tournament data:", err);
+      console.log("Error fetching tournament data:", err);
     } finally {
       setLoading(false);
     }
