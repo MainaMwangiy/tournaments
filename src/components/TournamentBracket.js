@@ -28,6 +28,29 @@ const TournamentBracket = () => {
   const [score2, setScore2] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  const roundWidth = isMobile ? 210 : 240
+  const gap = isMobile ? 30 : 60
+  const baseInterval = isMobile ? 100 : 160
+  const matchHeight = isMobile ? 60 : 80
+  const connectorHalf = gap / 2
+  const connectorOffset = isMobile ? 10 : 19
+  const initialOffset = isMobile ? 30 : 40
+  const playerPadding = isMobile ? "4px 6px" : "6px 8px"
+  const playerFontSize = isMobile ? "12px" : "14px"
+  const scoreSize = isMobile ? "20px" : "24px"
+  const scoreHeight = isMobile ? "18px" : "22px"
+  const containerPadding = isMobile ? "10px" : "20px"
+  const bracketPadding = 20
 
   // Fetch tournament data on component mount
   useEffect(() => {
@@ -298,11 +321,10 @@ const TournamentBracket = () => {
 
     const rounds = Math.log2(playerCount);
     const centers = Array.from({ length: rounds }, () => []);
-    const baseInterval = 160;
     const firstMatches = bracket[0]?.length || 0;
 
     for (let j = 0; j < firstMatches; j++) {
-      centers[0][j] = 40 + j * baseInterval;
+      centers[0][j] = initialOffset + j * baseInterval;
     }
 
     for (let r = 1; r < rounds; r++) {
@@ -324,6 +346,7 @@ const TournamentBracket = () => {
   const createConnectors = (round, centers, totalRounds) => {
     const connectorElements = []
     const matchCount = centers[round]?.length || 0;
+    const vLeft = connectorHalf - 1;
 
     for (let i = 0; i < matchCount; i += 2) {
       const match1Index = i
@@ -342,9 +365,9 @@ const TournamentBracket = () => {
           key={`h1-${round}-${i}`}
           className="connector horizontal-line"
           style={{
-            width: "30px",
+            width: `${connectorHalf}px`,
             left: "0px",
-            top: `${match1Center + 19}px`,
+            top: `${match1Center + connectorOffset}px`,
           }}
         />
       )
@@ -355,9 +378,9 @@ const TournamentBracket = () => {
             key={`h2-${round}-${i}`}
             className="connector horizontal-line"
             style={{
-              width: "30px",
+              width: `${connectorHalf}px`,
               left: "0px",
-              top: `${match2Center + 19}px`,
+              top: `${match2Center + connectorOffset}px`,
             }}
           />
         )
@@ -367,8 +390,8 @@ const TournamentBracket = () => {
             key={`v-${round}-${i}`}
             className="connector vertical-line"
             style={{
-              left: "29px",
-              top: `${Math.min(match1Center, match2Center) + 19}px`,
+              left: `${vLeft}px`,
+              top: `${Math.min(match1Center, match2Center) + connectorOffset}px`,
               height: `${Math.abs(match2Center - match1Center) + 2}px`,
             }}
           />
@@ -380,9 +403,9 @@ const TournamentBracket = () => {
           key={`hr-${round}-${i}`}
           className="connector horizontal-line"
           style={{
-            width: "30px",
-            left: "30px",
-            top: `${connectionPoint + 19}px`,
+            width: `${connectorHalf}px`,
+            left: `${connectorHalf}px`,
+            top: `${connectionPoint + connectorOffset}px`,
           }}
         />
       )
@@ -410,10 +433,10 @@ const TournamentBracket = () => {
         alignItems: "flex-start",
         background: "#f3f4f6",
         fontFamily: "Arial, sans-serif",
-        padding: "20px",
+        padding: containerPadding,
       }}
     >
-      <div className="container">
+      <div className="container" style={{ width: "100%" }}>
         <div className="controls">
           {isLoggedIn && (
             <button className="return-btn" onClick={() => navigate(`/tournament-details/${id}`)}>
@@ -475,18 +498,32 @@ const TournamentBracket = () => {
           {isLoggedIn && status === "in-progress" && shareUrl && (
             <div>
               <p>Share this link with everyone to view the tournament:</p>
-              <input
-                type="text"
-                value={window.location.origin + shareUrl}
-                readOnly
-                style={{ width: "300px", padding: "5px" }}
-              />
-              <button
-                onClick={() => navigator.clipboard.writeText(window.location.origin + shareUrl)}
-                style={{ marginLeft: "10px", padding: "6px 12px", background: "#2563eb", color: "white", border: "none", borderRadius: "8px" }}
-              >
-                Copy Link
-              </button>
+              <div style={{ display: "flex", gap: isMobile ? "5px" : "10px", alignItems: "center", flexWrap: "wrap" }}>
+                <input
+                  type="text"
+                  value={window.location.origin + shareUrl}
+                  readOnly
+                  style={{ 
+                    width: isMobile ? "70%" : "300px", 
+                    padding: "5px",
+                    flex: isMobile ? 1 : "unset",
+                    minWidth: 0
+                  }}
+                />
+                <button
+                  onClick={() => navigator.clipboard.writeText(window.location.origin + shareUrl)}
+                  style={{ 
+                    padding: "6px 12px", 
+                    background: "#2563eb", 
+                    color: "white", 
+                    border: "none", 
+                    borderRadius: "8px",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  Copy Link
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -537,21 +574,25 @@ const TournamentBracket = () => {
               className="round-headers"
               style={{
                 display: "flex",
-                gap: "60px",
-                padding: "20px 20px 0",
+                gap: `${gap}px`,
+                padding: `${bracketPadding}px ${bracketPadding}px 0`,
                 justifyContent: "flex-start",
+                width: "100%",
+                overflowX: "auto",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {Array.from({ length: rounds }).map((_, round) => (
                 <div
                   key={round}
                   style={{
-                    width: "240px",
+                    width: `${roundWidth}px`,
                     textAlign: "center",
                     background: "#ccc",
                     padding: "5px",
                     borderRadius: "4px",
                     color: "#666",
+                    flexShrink: 0,
                   }}
                 >
                   {getRoundName(round, rounds)}
@@ -562,124 +603,136 @@ const TournamentBracket = () => {
               className="bracket"
               style={{
                 display: "flex",
-                gap: "60px",
+                gap: `${gap}px`,
                 alignItems: "flex-start",
                 position: "relative",
                 overflowX: "auto",
-                padding: "20px",
+                padding: `${bracketPadding}px`,
+                width: "100%",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {bracket.map((roundMatches, round) => {
                 const roundCenters = centers[round] || [];
+                const maxCenter = Math.max(...roundCenters, 0);
                 return (
                   <div
                     key={round}
                     className="round"
                     style={{
-                      height: `${Math.max(...roundCenters, 0) + 40}px`,
+                      height: `${maxCenter + initialOffset}px`,
                       position: "relative",
-                      width: "240px",
+                      width: `${roundWidth-1}px`,
+                      flexShrink: 0,
+                      // border: '1px solid red'
                     }}
                   >
-                    {roundMatches.map((match, matchIndex) => (
-                      <div
-                        key={`${round}-${matchIndex}`}
-                        className="match"
-                        style={{
-                          top: `${(roundCenters[matchIndex] ?? 40) - 40}px`,
-                          position: "absolute",
-                          width: "240px",
-                          border: "1px solid #ddd",
-                          borderRadius: "8px",
-                          background: "white",
-                          overflow: "hidden",
-                          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                          height: "80px",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "space-between",
-                          left: 0,
-                          margin: 0,
-                          boxSizing: "border-box",
-                          cursor: isLoggedIn ? "pointer" : "default",
-                        }}
-                        onClick={() => isLoggedIn && handleEditResult(round, matchIndex)}
-                      >
+                    {roundMatches.map((match, matchIndex) => {
+                      const matchTop = (roundCenters[matchIndex] ?? initialOffset) - initialOffset;
+                      return (
                         <div
-                          className="player"
+                          key={`${round}-${matchIndex}`}
+                          className="match"
                           style={{
+                            top: `${matchTop}px`,
+                            position: "absolute",
+                            width: `${roundWidth-2}px`,
+                            // border: "1px solid #ddd",
+                            borderRadius: "8px",
+                            background: "white",
+                            overflow: "hidden",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                            height: `${matchHeight}px`,
                             display: "flex",
+                            flexDirection: "column",
                             justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "6px 8px",
-                            fontSize: "14px",
+                            left: 0,
+                            margin: 0,
+                            boxSizing: "border-box",
+                            cursor: isLoggedIn ? "pointer" : "default",
+                            // border: '1px solid blue'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditResult(round, matchIndex);
                           }}
                         >
-                          <span style={{ color: "#111827", fontWeight: "500" }}>
-                            {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
-                            {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
-                              <span style={{ color: "#6b7280", fontSize: "13px" }}>
-                                ({match.player1.seed})
-                              </span>
-                            )}
-                          </span>
-                          <span
-                            className="score"
+                          <div
+                            className="player"
                             style={{
-                              background: "#dbeafe",
-                              color: "#1d4ed8",
-                              borderRadius: "6px",
-                              width: "24px",
-                              height: "22px",
                               display: "flex",
+                              justifyContent: "space-between",
                               alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "13px",
-                              fontWeight: "bold",
+                              padding: playerPadding,
+                              fontSize: playerFontSize,
                             }}
                           >
-                            {match.score1}
-                          </span>
-                        </div>
-                        <div
-                          className="player"
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "6px 8px",
-                            fontSize: "14px",
-                            borderTop: "1px solid #ddd",
-                          }}
-                        >
-                          <span style={{ color: "#111827", fontWeight: "500" }}>
-                            {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
-                            {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
-                              <span style={{ color: "#6b7280", fontSize: "13px" }}>
-                                ({match.player2.seed})
-                              </span>
-                            )}
-                          </span>
-                          <span
-                            className="score"
+                            <span style={{ color: "#111827", fontWeight: "500", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {match.player1.name === "TBD" ? "TBD" : match.player1.name}{" "}
+                              {match.player1.name !== "TBD" && match.player1.name !== "BYE" && (
+                                <span style={{ color: "#6b7280", fontSize: isMobile ? "11px" : "13px" }}>
+                                  ({match.player1.seed})
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className="score"
+                              style={{
+                                background: "#dbeafe",
+                                color: "#1d4ed8",
+                                borderRadius: "6px",
+                                width: scoreSize,
+                                height: scoreHeight,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: isMobile ? "11px" : "13px",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {match.score1}
+                            </span>
+                          </div>
+                          <div
+                            className="player"
                             style={{
-                              background: "#dbeafe",
-                              color: "#1d4ed8",
-                              borderRadius: "6px",
-                              width: "24px",
-                              height: "22px",
                               display: "flex",
+                              justifyContent: "space-between",
                               alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: "13px",
-                              fontWeight: "bold",
+                              padding: playerPadding,
+                              fontSize: playerFontSize,
+                              borderTop: "1px solid #ddd",
                             }}
                           >
-                            {match.score2}
-                          </span>
+                            <span style={{ color: "#111827", fontWeight: "500", flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {match.player2.name === "TBD" ? "TBD" : match.player2.name}{" "}
+                              {match.player2.name !== "TBD" && match.player2.name !== "BYE" && (
+                                <span style={{ color: "#6b7280", fontSize: isMobile ? "11px" : "13px" }}>
+                                  ({match.player2.seed})
+                                </span>
+                              )}
+                            </span>
+                            <span
+                              className="score"
+                              style={{
+                                background: "#dbeafe",
+                                color: "#1d4ed8",
+                                borderRadius: "6px",
+                                width: scoreSize,
+                                height: scoreHeight,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: isMobile ? "11px" : "13px",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              {match.score2}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -688,11 +741,12 @@ const TournamentBracket = () => {
                   key={`connector-${round}`}
                   style={{
                     position: "absolute",
-                    left: `${(round + 1) * 240 + round * 60}px`,
-                    width: "60px",
+                    left: `${(round + 1) * roundWidth + round * gap - round * connectorOffset}px`,
+                    width: `${gap}px`,
                     height: "100%",
                     top: "0px",
                     pointerEvents: "none",
+                    //  border: '1px solid green'
                   }}
                 >
                   {createConnectors(round, centers, rounds)}
@@ -722,8 +776,9 @@ const TournamentBracket = () => {
                 color: "#111827",
                 border: "1px solid #e5e7eb",
                 borderRadius: "12px",
-                padding: "20px",
-                width: "320px",
+                padding: isMobile ? "15px" : "20px",
+                width: isMobile ? "90vw" : "320px",
+                maxWidth: "400px",
                 boxShadow: "0 6px 18px rgba(0,0,0,0.15)",
               }}
             >
@@ -821,4 +876,4 @@ const TournamentBracket = () => {
   )
 }
 
-export default TournamentBracket
+export default TournamentBracket;
