@@ -314,6 +314,7 @@ const TournamentView = () => {
 
   const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0
   const centers = getCenters()
+  const totalBracketWidth = rounds * roundWidth + (rounds - 1) * gap
 
   // Get winner for ended tournament
   const getTournamentWinner = () => {
@@ -552,7 +553,8 @@ const TournamentView = () => {
       {/* Bracket Container */}
       <div
         style={{
-          maxWidth: "100%",
+          width: "100%",
+          maxHeight: "calc(100vh - 250px)",
           overflowX: "auto",
           overflowY: "auto",
           background: "white",
@@ -560,7 +562,6 @@ const TournamentView = () => {
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
           border: "1px solid #e5e7eb",
           padding: `${bracketPadding}px`,
-          width: "fit-content",
           touchAction: "pan-y pinch-zoom", // Enables pinch zoom on mobile while allowing vertical pan
           WebkitOverflowScrolling: "touch",
         }}
@@ -571,17 +572,18 @@ const TournamentView = () => {
               display: "flex",
               flexDirection: "column",
               alignItems: "flex-start",
-              width: "fit-content",
-              minWidth: "100%",
+              width: `${totalBracketWidth}px`,
             }}
           >
             {/* Round Headers */}
             <div
               style={{
                 display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
                 gap: `${gap}px`,
                 marginBottom: "20px",
-                minWidth: "fit-content",
+                width: `${totalBracketWidth}px`,
               }}
             >
               {Array.from({ length: rounds }).map((_, round) => (
@@ -606,10 +608,12 @@ const TournamentView = () => {
             <div
               style={{
                 display: "flex",
+                flexDirection: "row",
+                flexWrap: "nowrap",
                 gap: `${gap}px`,
                 alignItems: "flex-start",
                 position: "relative",
-                minWidth: "fit-content",
+                width: `${totalBracketWidth}px`,
               }}
             >
               {bracket.map((roundMatches, round) => {
