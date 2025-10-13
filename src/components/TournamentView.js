@@ -105,9 +105,9 @@ const TournamentView = () => {
 
         // Check if tournament is ended based on final match
         const finalRound = propagatedBracket.length - 1
-        if (finalRound >= 0) {
+        if (finalRound > 0) {
           const finalMatch = propagatedBracket[finalRound][0]
-          if (finalMatch.score1 > 0 && finalMatch.score2 >= 0 && finalMatch.score1 !== finalMatch.score2) {
+          if (finalMatch?.score1 > 0 && finalMatch?.score2 >= 0 && finalMatch?.score1 !== finalMatch?.score2) {
             effectiveStatus = "ended"
           }
         }
