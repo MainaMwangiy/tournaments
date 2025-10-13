@@ -622,7 +622,7 @@ const TournamentBracket = () => {
                     style={{
                       height: `${maxCenter + initialOffset}px`,
                       position: "relative",
-                      width: `${roundWidth-1}px`,
+                      width: `${roundWidth}px`,
                       flexShrink: 0,
                       // border: '1px solid red'
                     }}
@@ -636,7 +636,7 @@ const TournamentBracket = () => {
                           style={{
                             top: `${matchTop}px`,
                             position: "absolute",
-                            width: `${roundWidth-2}px`,
+                            width: `${roundWidth}px`,
                             // border: "1px solid #ddd",
                             borderRadius: "8px",
                             background: "white",
@@ -736,22 +736,26 @@ const TournamentBracket = () => {
                   </div>
                 );
               })}
-              {Array.from({ length: rounds - 1 }, (_, round) => (
-                <div
-                  key={`connector-${round}`}
-                  style={{
-                    position: "absolute",
-                    left: `${(round + 1) * roundWidth + round * gap - round * connectorOffset}px`,
-                    width: `${gap}px`,
-                    height: "100%",
-                    top: "0px",
-                    pointerEvents: "none",
-                    //  border: '1px solid green'
-                  }}
-                >
-                  {createConnectors(round, centers, rounds)}
-                </div>
-              ))}
+              {Array.from({ length: rounds - 1 }, (_, round) => {
+                const adjustment = isMobile 
+                  ? -round * connectorOffset 
+                  : connectorOffset - (round > 0 ? 3 : 0);
+                return (
+                  <div
+                    key={`connector-${round}`}
+                    style={{
+                      position: "absolute",
+                      left: `${(round + 1) * roundWidth + round * gap + adjustment}px`,
+                      width: `${gap}px`,
+                      height: "100%",
+                      top: "0px",
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {createConnectors(round, centers, rounds)}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
