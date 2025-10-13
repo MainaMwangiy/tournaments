@@ -562,7 +562,7 @@ const TournamentView = () => {
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
           border: "1px solid #e5e7eb",
           padding: `${bracketPadding}px`,
-          touchAction: "pan-y pinch-zoom", // Enables pinch zoom on mobile while allowing vertical pan
+          touchAction: "pan-x pan-y pinch-zoom", // Enables pinch zoom on mobile while allowing horizontal and vertical pan
           WebkitOverflowScrolling: "touch",
         }}
       >
@@ -752,15 +752,15 @@ const TournamentView = () => {
 
               {/* Connectors */}
               {Array.from({ length: rounds - 1 }, (_, connectorRound) => {
-                const adjustment = isMobile 
-                  ? -connectorRound * connectorOffset 
-                  : connectorOffset - (connectorRound > 0 ? 3 : 0);
+                const connectorLeft = isMobile
+                  ? 210 + connectorRound * (roundWidth + gap) 
+                  : (connectorRound + 1) * roundWidth + connectorRound * gap + (connectorOffset - (connectorRound > 0 ? 3 : 0));
                 return (
                   <div
                     key={`connector-${connectorRound}`}
                     style={{
                       position: "absolute",
-                      left: `${(connectorRound + 1) * roundWidth + connectorRound * gap + adjustment}px`,
+                      left: `${connectorLeft}px`,
                       width: `${gap}px`,
                       height: "100%",
                       top: "0px",
