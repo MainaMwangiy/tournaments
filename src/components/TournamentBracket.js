@@ -9,14 +9,14 @@ import {
   updateMatchResult,
   selectTournament,
 } from "../redux/actions"
-import { useNavigate, useParams } from "react-router-dom"
+import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { tournamentApi } from "../utils/tournamentApi"
 
 const TournamentBracket = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { id } = useParams()
-  const { isLoggedIn, isAdmin } = useSelector((state) => state.auth)
+  const { isLoggedIn, isAdmin } = useSelector((state) => state.auth);
 
   const [tournament, setTournament] = useState(null)
   const [players, setPlayers] = useState([])
@@ -422,6 +422,11 @@ const TournamentBracket = () => {
   const rounds = isValidPlayerCount ? Math.log2(playerCount) : 0;
   const centers = getCenters()
 
+  
+  if (!isLoggedIn) {
+    return <Navigate to="/login" />
+  }
+
   return (
     <div
       className="tournament-container"
@@ -623,8 +628,7 @@ const TournamentBracket = () => {
                       height: `${maxCenter + initialOffset}px`,
                       position: "relative",
                       width: `${roundWidth}px`,
-                      flexShrink: 0,
-                      // border: '1px solid red'
+                      flexShrink: 0
                     }}
                   >
                     {roundMatches.map((match, matchIndex) => {
@@ -637,7 +641,7 @@ const TournamentBracket = () => {
                             top: `${matchTop}px`,
                             position: "absolute",
                             width: `${roundWidth}px`,
-                            // border: "1px solid #ddd",
+                            border: "1px solid #ddd",
                             borderRadius: "8px",
                             background: "white",
                             overflow: "hidden",
@@ -650,10 +654,10 @@ const TournamentBracket = () => {
                             margin: 0,
                             boxSizing: "border-box",
                             cursor: isLoggedIn ? "pointer" : "default",
-                            // border: '1px solid blue'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
                             handleEditResult(round, matchIndex);
                           }}
                         >
