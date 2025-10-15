@@ -15,6 +15,13 @@ const TournamentDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchTournamentData = async () => {
@@ -98,30 +105,32 @@ const TournamentDetails = () => {
   const containerStyle = {
     minHeight: "100vh",
     background: "#f9fafb",
-    padding: "20px",
+    padding: isMobile ? "10px" : "20px",
     fontFamily: "Inter, sans-serif",
   };
 
   const headerStyle = {
     display: "flex",
-    alignItems: "center",
+    flexDirection: isMobile ? "column" : "row",
+    alignItems: isMobile ? "flex-start" : "center",
     marginBottom: "32px",
-    padding: "24px",
+    padding: isMobile ? "16px" : "24px",
     background: "white",
     borderRadius: "12px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+    gap: isMobile ? "12px" : "0",
   };
 
   const backBtnStyle = {
-    padding: "8px 16px",
-    fontSize: "14px",
+    padding: isMobile ? "6px 12px" : "8px 16px",
+    fontSize: isMobile ? "12px" : "14px",
     fontWeight: "500",
     background: "#e5e7eb",
     color: "#374151",
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",
-    marginRight: "16px",
+    marginRight: isMobile ? "0" : "16px",
     transition: "all 0.2s ease",
   };
 
@@ -129,20 +138,22 @@ const TournamentDetails = () => {
     background: "white",
     border: "1px solid #e5e7eb",
     borderRadius: "12px",
-    padding: "32px",
+    padding: isMobile ? "20px" : "32px",
     marginBottom: "24px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
   };
 
   const buttonStyle = {
-    padding: "12px 20px",
-    fontSize: "16px",
+    padding: isMobile ? "10px 16px" : "12px 20px",
+    fontSize: isMobile ? "14px" : "16px",
     fontWeight: "600",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
     transition: "all 0.2s ease",
-    marginRight: "12px",
+    marginRight: isMobile ? "0" : "12px",
+    marginBottom: isMobile ? "12px" : "0",
+    width: isMobile ? "100%" : "auto",
   };
 
   const primaryBtnStyle = {
@@ -169,7 +180,8 @@ const TournamentDetails = () => {
   const toastStyle = {
     position: "fixed",
     top: "20px",
-    left: "100px",
+    left: isMobile ? "50%" : "100px",
+    transform: isMobile ? "translateX(-50%)" : "none",
     background: "#10b981",
     color: "white",
     padding: "12px 24px",
@@ -180,6 +192,8 @@ const TournamentDetails = () => {
     zIndex: 1000,
     opacity: toast ? 1 : 0,
     transition: "opacity 0.3s ease",
+    textAlign: "center",
+    maxWidth: isMobile ? "90%" : "auto",
   };
 
   return (
@@ -200,27 +214,27 @@ const TournamentDetails = () => {
         >
           ← Back to Tournaments
         </button>
-        <h1 style={{ fontSize: "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Tournament Details</h1>
+        <h1 style={{ fontSize: isMobile ? "24px" : "28px", fontWeight: "700", color: "#111827", margin: 0 }}>Tournament Details</h1>
       </div>
 
       <div style={cardStyle}>
         <div
-          style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px" }}
+          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", alignItems: isMobile ? "flex-start" : "flex-start", marginBottom: "24px", gap: isMobile ? "16px" : "0" }}
         >
           <div>
-            <h2 style={{ fontSize: "32px", fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
+            <h2 style={{ fontSize: isMobile ? "24px" : "32px", fontWeight: "700", color: "#111827", marginBottom: "8px" }}>
               🏆 {tournament.name}
             </h2>
-            <p style={{ fontSize: "18px", color: "#6b7280", margin: 0 }}>
+            <p style={{ fontSize: isMobile ? "16px" : "18px", color: "#6b7280", margin: 0 }}>
               {tournament.type} • {tournament.format}
             </p>
           </div>
           <div
             style={{
-              padding: "12px 16px",
+              padding: isMobile ? "10px 14px" : "12px 16px",
               background: "#f3f4f6",
               borderRadius: "8px",
-              fontSize: "16px",
+              fontSize: isMobile ? "14px" : "16px",
               fontWeight: "600",
               color: getStatusColor(tournament.status),
             }}
@@ -232,33 +246,33 @@ const TournamentDetails = () => {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))",
             gap: "24px",
             marginBottom: "32px",
           }}
         >
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: "700", color: "#3b82f6" }}>{tournament.entries?.length || 0}</div>
+            <div style={{ fontSize: isMobile ? "28px" : "32px", fontWeight: "700", color: "#3b82f6" }}>{tournament.entries?.length || 0}</div>
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Players</div>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "32px", fontWeight: "700", color: "#10b981" }}>{dayjs(tournament.created_on).format('MM-DD-YYYY')}</div>
+            <div style={{ fontSize: isMobile ? "28px" : "32px", fontWeight: "700", color: "#10b981" }}>{dayjs(tournament.created_on).format('MM-DD-YYYY')}</div>
             <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Created</div>
           </div>
           {tournament.winner && (
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "20px", fontWeight: "700", color: "#dc2626" }}>🏆 {tournament.winner}</div>
+              <div style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "700", color: "#dc2626" }}>🏆 {tournament.winner}</div>
               <div style={{ fontSize: "14px", color: "#6b7280", fontWeight: "500" }}>Winner</div>
             </div>
           )}
         </div>
 
         <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "24px" }}>
-          <h3 style={{ fontSize: "20px", fontWeight: "600", color: "#111827", marginBottom: "16px" }}>
+          <h3 style={{ fontSize: isMobile ? "18px" : "20px", fontWeight: "600", color: "#111827", marginBottom: "16px" }}>
             Tournament Actions
           </h3>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", flexWrap: "wrap", gap: "12px" }}>
             <button
               style={primaryBtnStyle}
               onClick={handleAddEntries}
