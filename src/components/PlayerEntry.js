@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { tournamentApi } from "../utils/tournamentApi"
 import { Pencil, Trash2 } from "lucide-react";
+import { createRef } from 'react';
 
 const PlayerEntry = () => {
   const dispatch = useDispatch()
@@ -19,6 +20,8 @@ const PlayerEntry = () => {
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState("")
   const [editingSeed, setEditingSeed] = useState(0)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const rowRefs = useRef({})
 
   const fetchTournamentData = async () => {
     if (id) {
@@ -46,6 +49,12 @@ const PlayerEntry = () => {
   useEffect(() => {
     fetchTournamentData()
   }, [id])
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleAddPlayer = async () => {
     if (name.trim()) {
@@ -111,6 +120,9 @@ const PlayerEntry = () => {
     setEditingId(player.id)
     setEditingName(player.name)
     setEditingSeed(player.seed)
+    setTimeout(() => {
+      rowRefs.current[player.id]?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
   }
 
   const cancelEditing = () => {
@@ -392,61 +404,74 @@ const PlayerEntry = () => {
           </thead>
           <tbody>
             {players.length > 0 ? (
-              players.map((player, index) => (
-                <tr key={player.id || index} style={{ backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9" }}>
-                  <td style={tdStyle}>
-                    {editingId === player.id ? (
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        style={{ ...inputStyle, width: "100%" }}
-                      />
-                    ) : (
-                      player.name
-                    )}
-                  </td>
-                  <td style={tdStyle}>
-                    {editingId === player.id ? (
-                      <input
-                        type="number"
-                        value={editingSeed}
-                        onChange={(e) => setEditingSeed(parseInt(e.target.value) || 0)}
-                        style={{ ...inputStyle, width: "100%" }}
-                      />
-                    ) : (
-                      player.seed
-                    )}
-                  </td>
-                  <td style={actionTdStyle}>
-                    {editingId === player.id ? (
-                      <>
-                        <button onClick={() => handleUpdatePlayer(player.id)} style={saveBtnStyle}>
-                          Save
-                        </button>
-                        <button onClick={cancelEditing} style={cancelBtnStyle}>
-                          Cancel
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <Pencil
-                          size={18}
-                          color="blue"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => startEditing(player)}
+              players.map((player, index) => {
+                if (!rowRefs.current[player.id]) rowRefs.current[player.id] = createRef()
+                const editing = editingId === player.id
+                const trStyle = {
+                  backgroundColor: index % 2 === 0 ? "#fff" : "#f9f9f9",
+                  ...(editing && isMobile ? { display: 'block', padding: '10px', borderBottom: '1px solid #ddd' } : {}),
+                }
+                const cellStyle = editing && isMobile ? { ...tdStyle, display: 'block', width: '100%', marginBottom: '10px' } : tdStyle
+                const actionStyle = {
+                  ...actionTdStyle,
+                  ...(editing && isMobile ? { flexDirection: 'row', justifyContent: 'center', marginTop: '10px' } : {}),
+                }
+                return (
+                  <tr key={player.id} ref={rowRefs.current[player.id]} style={trStyle}>
+                    <td style={cellStyle}>
+                      {editing ? (
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          style={{ ...inputStyle, width: "100%" }}
                         />
-                        <Trash2
-                          size={18}
-                          color="red"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => handleDeletePlayer(player.id)}
+                      ) : (
+                        player.name
+                      )}
+                    </td>
+                    <td style={cellStyle}>
+                      {editing ? (
+                        <input
+                          type="number"
+                          value={editingSeed}
+                          onChange={(e) => setEditingSeed(parseInt(e.target.value) || 0)}
+                          style={{ ...inputStyle, width: "100%" }}
                         />
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))
+                      ) : (
+                        player.seed
+                      )}
+                    </td>
+                    <td style={actionStyle}>
+                      {editing ? (
+                        <>
+                          <button onClick={() => handleUpdatePlayer(player.id)} style={saveBtnStyle}>
+                            Save
+                          </button>
+                          <button onClick={cancelEditing} style={cancelBtnStyle}>
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Pencil
+                            size={18}
+                            color="blue"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => startEditing(player)}
+                          />
+                          <Trash2
+                            size={18}
+                            color="red"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => handleDeletePlayer(player.id)}
+                          />
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td style={emptyRowStyle} colSpan={3}>
