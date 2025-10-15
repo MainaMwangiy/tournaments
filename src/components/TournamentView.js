@@ -15,6 +15,7 @@ const TournamentView = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useEffect(() => {
+    localStorage.clear();
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768)
     }

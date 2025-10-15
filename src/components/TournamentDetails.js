@@ -1,39 +1,40 @@
-import { useState, useEffect } from "react"
-import { useDispatch, useSelector } from "react-redux"
-import { generateTournamentUrl } from "../redux/actions"
-import { Navigate, useNavigate, useParams } from "react-router-dom"
-import { tournamentApi } from "../utils/tournamentApi"
-import dayjs from "dayjs"
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { generateTournamentUrl } from "../redux/actions";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { tournamentApi } from "../utils/tournamentApi";
+import dayjs from "dayjs";
 
 const TournamentDetails = () => {
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
-  const { id } = useParams()
-  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn)
-  const isAdmin = useSelector((state) => state.auth.isAdmin)
-  const [tournament, setTournament] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isLoggedIn = useSelector((state) => state.auth.isLoggedIn);
+  const isAdmin = useSelector((state) => state.auth.isAdmin);
+  const [tournament, setTournament] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const fetchTournamentData = async () => {
       if (id) {
         try {
-          setLoading(true)
-          const details = await tournamentApi.getTournamentDetails(id)
-          setTournament(details?.data)
-          console.log("[v0] Loaded tournament details:", details)
+          setLoading(true);
+          const details = await tournamentApi.getTournamentDetails(id);
+          setTournament(details?.data);
+          console.log("[v0] Loaded tournament details:", details);
         } catch (err) {
-          console.error("Failed to fetch tournament details:", err)
-          setError("Failed to load tournament details")
+          console.error("Failed to fetch tournament details:", err);
+          setError("Failed to load tournament details");
         } finally {
-          setLoading(false)
+          setLoading(false);
         }
       }
-    }
+    };
 
-    fetchTournamentData()
-  }, [id])
+    fetchTournamentData();
+  }, [id]);
 
   const handleGenerateLink = async () => {
     try {
@@ -41,7 +42,8 @@ const TournamentDetails = () => {
       const shareUrl = `/bracket/${tournament?.id}`;
       const fullUrl = window.location.origin + shareUrl;
       await navigator.clipboard.writeText(fullUrl);
-      alert("Public tournament link copied to clipboard! Anyone can view it without logging in.");
+      setToast("Link copied to clipboard!");
+      setTimeout(() => setToast(null), 3000);
     } catch (err) {
       console.error("Failed to copy link:", err);
       // Fallback for older browsers
@@ -50,20 +52,22 @@ const TournamentDetails = () => {
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("copy");
-      alert("Public tournament link copied to clipboard!");
+      document.body.removeChild(textArea);
+      setToast("Link copied to clipboard!");
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
   const handleAddEntries = () => {
-    navigate(`/player-entry/${tournament?.id}`)
-  }
+    navigate(`/player-entry/${tournament?.id}`);
+  };
 
   const handleViewBracket = () => {
-    navigate(`/bracket/${tournament?.id}`)
-  }
+    navigate(`/bracket/${tournament?.id}`);
+  };
 
   if (!isLoggedIn) {
-    return <Navigate to="/login" />
+    return <Navigate to="/login" />;
   }
 
   if (loading) {
@@ -71,32 +75,32 @@ const TournamentDetails = () => {
       <div style={{ minHeight: "100vh", background: "#f9fafb", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Inter, sans-serif" }}>
         <p>Loading tournament...</p>
       </div>
-    )
+    );
   }
 
   if (!tournament || error) {
-    return <Navigate to="/tournaments" />
+    return <Navigate to="/tournaments" />;
   }
 
   const getStatusColor = (status) => {
     switch (status) {
       case "completed":
-        return "#059669"
+        return "#059669";
       case "in-progress":
-        return "#d97706"
+        return "#d97706";
       case "ended":
-        return "#dc2626"
+        return "#dc2626";
       default:
-        return "#6b7280"
+        return "#6b7280";
     }
-  }
+  };
 
   const containerStyle = {
     minHeight: "100vh",
     background: "#f9fafb",
     padding: "20px",
     fontFamily: "Inter, sans-serif",
-  }
+  };
 
   const headerStyle = {
     display: "flex",
@@ -106,7 +110,7 @@ const TournamentDetails = () => {
     background: "white",
     borderRadius: "12px",
     boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
-  }
+  };
 
   const backBtnStyle = {
     padding: "8px 16px",
@@ -119,7 +123,7 @@ const TournamentDetails = () => {
     cursor: "pointer",
     marginRight: "16px",
     transition: "all 0.2s ease",
-  }
+  };
 
   const cardStyle = {
     background: "white",
@@ -128,7 +132,7 @@ const TournamentDetails = () => {
     padding: "32px",
     marginBottom: "24px",
     boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-  }
+  };
 
   const buttonStyle = {
     padding: "12px 20px",
@@ -139,40 +143,59 @@ const TournamentDetails = () => {
     cursor: "pointer",
     transition: "all 0.2s ease",
     marginRight: "12px",
-  }
+  };
 
   const primaryBtnStyle = {
     ...buttonStyle,
     background: "#3b82f6",
     color: "white",
     boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
-  }
+  };
 
   const secondaryBtnStyle = {
     ...buttonStyle,
     background: "#10b981",
     color: "white",
     boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-  }
+  };
 
   const outlineBtnStyle = {
     ...buttonStyle,
     background: "transparent",
     color: "#6b7280",
     border: "2px solid #e5e7eb",
-  }
+  };
+
+  const toastStyle = {
+    position: "fixed",
+    top: "20px",
+    left: "100px",
+    background: "#10b981",
+    color: "white",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    fontSize: "14px",
+    fontWeight: "500",
+    zIndex: 1000,
+    opacity: toast ? 1 : 0,
+    transition: "opacity 0.3s ease",
+  };
 
   return (
     <div style={containerStyle}>
+      {/* Toast Notification */}
+      {toast && <div style={toastStyle}>{toast}</div>}
+
       <div style={headerStyle}>
         <button
           style={backBtnStyle}
           onClick={() => navigate("/tournaments")}
           onMouseEnter={(e) => {
-            e.target.style.background = "#d1d5db"
+            e.target.style.background = "#d1d5db";
           }}
           onMouseLeave={(e) => {
-            e.target.style.background = "#e5e7eb"
+            e.target.style.background = "#e5e7eb";
           }}
         >
           ← Back to Tournaments
@@ -240,12 +263,12 @@ const TournamentDetails = () => {
               style={primaryBtnStyle}
               onClick={handleAddEntries}
               onMouseEnter={(e) => {
-                e.target.style.background = "#2563eb"
-                e.target.style.transform = "translateY(-1px)"
+                e.target.style.background = "#2563eb";
+                e.target.style.transform = "translateY(-1px)";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = "#3b82f6"
-                e.target.style.transform = "translateY(0)"
+                e.target.style.background = "#3b82f6";
+                e.target.style.transform = "translateY(0)";
               }}
             >
               👥 Add/Manage Entries
@@ -255,12 +278,12 @@ const TournamentDetails = () => {
               style={secondaryBtnStyle}
               onClick={handleViewBracket}
               onMouseEnter={(e) => {
-                e.target.style.background = "#059669"
-                e.target.style.transform = "translateY(-1px)"
+                e.target.style.background = "#059669";
+                e.target.style.transform = "translateY(-1px)";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = "#10b981"
-                e.target.style.transform = "translateY(0)"
+                e.target.style.background = "#10b981";
+                e.target.style.transform = "translateY(0)";
               }}
             >
               🏆 {isAdmin ? "Update Bracket" : "View Bracket"}
@@ -270,12 +293,12 @@ const TournamentDetails = () => {
               style={outlineBtnStyle}
               onClick={handleGenerateLink}
               onMouseEnter={(e) => {
-                e.target.style.background = "#f3f4f6"
-                e.target.style.borderColor = "#d1d5db"
+                e.target.style.background = "#f3f4f6";
+                e.target.style.borderColor = "#d1d5db";
               }}
               onMouseLeave={(e) => {
-                e.target.style.background = "transparent"
-                e.target.style.borderColor = "#e5e7eb"
+                e.target.style.background = "transparent";
+                e.target.style.borderColor = "#e5e7eb";
               }}
             >
               🔗 Generate Share Link
@@ -284,7 +307,7 @@ const TournamentDetails = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TournamentDetails
+export default TournamentDetails;
