@@ -125,9 +125,18 @@ export const tournamentApi = {
     return response.json()
   },
 
-  // New: for adding player from PlayerEntry
   addPlayer: async (tournamentId, playerData) => {
     const response = await apiClient.post(`${API_BASE_URL}/tournaments/${tournamentId}/player`, playerData)
     return response.data
+  },
+
+  updatePlayer: async (tournamentId, entryId, playerData) => {
+    const response = await apiClient.put(`${API_BASE_URL}/tournaments/${tournamentId}/player/${entryId}`, playerData);
+    return response.data;
+  },
+
+  deletePlayer: async (tournamentId, entryId) => {
+    const response = await apiClient.delete(`${API_BASE_URL}/tournaments/${tournamentId}/player/${entryId}`);
+    return response.data;
   },
 };
