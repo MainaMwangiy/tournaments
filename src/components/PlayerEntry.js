@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { tournamentApi } from "../utils/tournamentApi"
+import { Pencil, Trash2 } from "lucide-react";
 
 const PlayerEntry = () => {
   const dispatch = useDispatch()
@@ -13,7 +14,7 @@ const PlayerEntry = () => {
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [players, setPlayers] = useState([]) 
+  const [players, setPlayers] = useState([])
   const [tournamentDetails, setTournamentDetails] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [editingName, setEditingName] = useState("")
@@ -118,24 +119,17 @@ const PlayerEntry = () => {
     setEditingSeed(0)
   }
 
-  const isPowerOfTwo = (n) => n > 0 && Number.isInteger(Math.log2(n));
-
-  const handleNext = () => {
-    navigate(`/bracket/${id || tournamentDetails?.data.id}`)
-  }
+  const isPowerOfTwo = (n) => n > 0 && Number.isInteger(Math.log2(n))
+  const handleNext = () => navigate(`/bracket/${id || tournamentDetails?.id}`)
 
   const handleKeyPress = (e) => {
-    if (e.key === "Enter" && !loading) {
-      handleAddPlayer()
-    }
+    if (e.key === "Enter" && !loading) handleAddPlayer()
   }
 
-  if (!isLoggedIn) {
-    return <Navigate to="/login" />
-  }
+  if (!isLoggedIn) return <Navigate to="/login" />
 
   const isFormValid = name.trim() && !loading
-  const isReadyToProceed = players.length >= 4 && isPowerOfTwo(players.length);
+  const isReadyToProceed = players.length >= 4 && isPowerOfTwo(players.length)
 
   // ===== Styles =====
   const containerStyle = {
@@ -243,10 +237,7 @@ const PlayerEntry = () => {
     overflow: "hidden",
   }
 
-  const tableStyle = {
-    width: "100%",
-    borderCollapse: "collapse",
-  }
+  const tableStyle = { width: "100%", borderCollapse: "collapse" }
 
   const thStyle = {
     padding: "16px 20px",
@@ -267,14 +258,8 @@ const PlayerEntry = () => {
   const actionTdStyle = {
     ...tdStyle,
     display: "flex",
+    alignItems: "center",
     gap: "12px",
-  }
-
-  const iconStyle = {
-    cursor: "pointer",
-    fontSize: "18px",
-    color: "#666",
-    transition: "color 0.2s",
   }
 
   const emptyRowStyle = {
@@ -318,17 +303,8 @@ const PlayerEntry = () => {
     marginRight: "8px",
   }
 
-  const saveBtnStyle = {
-    ...smallButtonStyle,
-    background: "#333",
-    color: "white",
-  }
-
-  const cancelBtnStyle = {
-    ...smallButtonStyle,
-    background: "#ddd",
-    color: "#333",
-  }
+  const saveBtnStyle = { ...smallButtonStyle, background: "#333", color: "white" }
+  const cancelBtnStyle = { ...smallButtonStyle, background: "#ddd", color: "#333" }
 
   return (
     <div style={containerStyle}>
@@ -372,8 +348,10 @@ const PlayerEntry = () => {
           <span>
             <strong>{players.length}</strong> players added
           </span>
-          <span style={{ color: isReadyToProceed ? "#059669" : "#dc2626" }}>
-            {isReadyToProceed ? "✓ Ready to proceed" : "Need power of 2 players (4,8,16,...) minimum 4"}
+          <span style={{ color: "#666" }}>
+            {isReadyToProceed
+              ? "✓ Ready to proceed"
+              : "Need power of 2 players (4,8,16,...) minimum 4"}
           </span>
         </div>
 
@@ -452,8 +430,18 @@ const PlayerEntry = () => {
                       </>
                     ) : (
                       <>
-                        <span style={iconStyle} onClick={() => startEditing(player)}>✏️</span>
-                        <span style={iconStyle} onClick={() => handleDeletePlayer(player.id)}>🗑️</span>
+                        <Pencil
+                          size={18}
+                          color="blue"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => startEditing(player)}
+                        />
+                        <Trash2
+                          size={18}
+                          color="red"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handleDeletePlayer(player.id)}
+                        />
                       </>
                     )}
                   </td>
