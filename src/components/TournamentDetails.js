@@ -37,10 +37,10 @@ const TournamentDetails = () => {
   }, [id]);
 
   const handleGenerateLink = async () => {
+    if (!tournament?.id) return;
     try {
-      dispatch(generateTournamentUrl());
-      const shareUrl = `/bracket/${tournament?.id}`;
-      const fullUrl = window.location.origin + shareUrl;
+      const shareUrl = `/view/${tournament.id}`;
+      const fullUrl = `${window.location.origin}${shareUrl}`;
       await navigator.clipboard.writeText(fullUrl);
       setToast("Link copied to clipboard!");
       setTimeout(() => setToast(null), 3000);
@@ -48,7 +48,7 @@ const TournamentDetails = () => {
       console.error("Failed to copy link:", err);
       // Fallback for older browsers
       const textArea = document.createElement("textarea");
-      textArea.value = window.location.origin + `/bracket/${tournament?.id}`;
+      textArea.value = `${window.location.origin}/view/${tournament.id}`;
       document.body.appendChild(textArea);
       textArea.select();
       document.execCommand("copy");
