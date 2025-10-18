@@ -554,6 +554,7 @@ const TournamentView = () => {
       <div
         style={{
           width: "100%",
+          maxHeight: "calc(100vh - 250px)",
           overflowX: "auto",
           overflowY: "auto",
           background: "white",
@@ -561,8 +562,8 @@ const TournamentView = () => {
           boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
           border: "1px solid #e5e7eb",
           padding: `${bracketPadding}px`,
-          touchAction: "pan-x pan-y pinch-zoom", 
-          WebkitOverflowScrolling: "touch"
+          touchAction: "pan-x pan-y pinch-zoom", // Enables pinch zoom on mobile while allowing horizontal and vertical pan
+          WebkitOverflowScrolling: "touch",
         }}
       >
         {bracket.length > 0 && isValidPlayerCount ? (
